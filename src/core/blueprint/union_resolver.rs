@@ -3,6 +3,7 @@ use crate::core::config;
 use crate::core::config::{ConfigModule, Field};
 use crate::core::ir::model::IR;
 use crate::core::ir::Discriminator;
+use crate::core::json::JsonLike;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, Validator};
 
@@ -26,10 +27,10 @@ fn compile_union_resolver(
     })
 }
 
-pub fn update_union_resolver<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+pub fn update_union_resolver<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         |(config, field, _, _), mut b_field| {
             let Some(union_) = config.find_union(&field.type_of) else {
                 return Valid::succeed(b_field);

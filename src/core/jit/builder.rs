@@ -14,6 +14,7 @@ use super::BuildError;
 use crate::core::blueprint::{Blueprint, Index, QueryField};
 use crate::core::counter::{Count, Counter};
 use crate::core::jit::model::OperationPlan;
+use crate::core::json::JsonLike;
 use crate::core::merge_right::MergeRight;
 
 #[derive(PartialEq, strum_macros::Display)]
@@ -64,16 +65,16 @@ impl Conditions {
     }
 }
 
-pub struct Builder {
-    pub index: Index,
+pub struct Builder<Value> {
+    pub index: Index<Value>,
     pub arg_id: Counter<usize>,
     pub field_id: Counter<usize>,
     pub document: ExecutableDocument,
 }
 
 // TODO: make generic over Value (Input) type
-impl Builder {
-    pub fn new(blueprint: &Blueprint, document: ExecutableDocument) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> Builder<Value> {
+    pub fn new(blueprint: &Blueprint<Value>, document: ExecutableDocument) -> Self {
         let index = blueprint.index();
         Self {
             document,
@@ -93,7 +94,7 @@ impl Builder {
             match arg {
                 None => None,
                 Some(value) => match value {
-                    Value::Boolean(bool) => {
+                    async_graphql_value::Value::Boolean(bool) => {
                         let condition = if *bool {
                             Condition::True
                         } else {
@@ -101,7 +102,7 @@ impl Builder {
                         };
                         Some(condition)
                     }
-                    Value::Variable(var) => {
+                    async_graphql_value::Value::Variable(var) => {
                         Some(Condition::Variable(Variable::new(var.deref().to_owned())))
                     }
                     _ => None,

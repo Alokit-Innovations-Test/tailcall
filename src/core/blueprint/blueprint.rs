@@ -12,6 +12,7 @@ use super::telemetry::Telemetry;
 use super::{GlobalTimeout, Index};
 use crate::core::blueprint::{Server, Upstream};
 use crate::core::ir::model::IR;
+use crate::core::json::JsonLike;
 use crate::core::scalar;
 use crate::core::schema_extension::SchemaExtension;
 
@@ -20,8 +21,8 @@ use crate::core::schema_extension::SchemaExtension;
 /// It allows us to choose a different GraphQL Backend, without re-writing all
 /// orchestration logic. It's not optimized for REST APIs (yet).
 #[derive(Clone, Debug, Default, Setters)]
-pub struct Blueprint {
-    pub definitions: Vec<Definition>,
+pub struct Blueprint<Value> {
+    pub definitions: Vec<Definition<Value>>,
     pub schema: SchemaDefinition,
     pub server: Server,
     pub upstream: Upstream,
@@ -84,15 +85,15 @@ impl Type {
 }
 
 #[derive(Clone, Debug)]
-pub enum Definition {
-    Interface(InterfaceTypeDefinition),
-    Object(ObjectTypeDefinition),
+pub enum Definition<Value> {
+    Interface(InterfaceTypeDefinition<Value>),
+    Object(ObjectTypeDefinition<Value>),
     InputObject(InputObjectTypeDefinition),
     Scalar(ScalarTypeDefinition),
     Enum(EnumTypeDefinition),
     Union(UnionTypeDefinition),
 }
-impl Definition {
+impl<Value> Definition<Value> {
     /// gets the name of the definition
     pub fn name(&self) -> &str {
         match self {
@@ -107,16 +108,16 @@ impl Definition {
 }
 
 #[derive(Clone, Debug)]
-pub struct InterfaceTypeDefinition {
+pub struct InterfaceTypeDefinition<Value> {
     pub name: String,
-    pub fields: Vec<FieldDefinition>,
+    pub fields: Vec<FieldDefinition<Value>>,
     pub description: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ObjectTypeDefinition {
+pub struct ObjectTypeDefinition<Value> {
     pub name: String,
-    pub fields: Vec<FieldDefinition>,
+    pub fields: Vec<FieldDefinition<Value>>,
     pub description: Option<String>,
     pub implements: BTreeSet<String>,
 }
@@ -159,20 +160,20 @@ pub struct InputFieldDefinition {
 }
 
 #[derive(Clone, Debug, Setters, Default)]
-pub struct FieldDefinition {
+pub struct FieldDefinition<Value> {
     pub name: String,
     pub args: Vec<InputFieldDefinition>,
     pub of_type: Type,
-    pub resolver: Option<IR>,
+    pub resolver: Option<IR<Value>>,
     pub directives: Vec<Directive>,
     pub description: Option<String>,
     pub default_value: Option<serde_json::Value>,
 }
 
-impl FieldDefinition {
+impl<Value> FieldDefinition<Value> {
     ///
     /// Transforms the current expression if it exists on the provided field.
-    pub fn map_expr<F: FnOnce(IR) -> IR>(&mut self, wrapper: F) {
+    pub fn map_expr<F: FnOnce(IR<Value>) -> IR<Value>>(&mut self, wrapper: F) {
         if let Some(resolver) = self.resolver.take() {
             self.resolver = Some(wrapper(resolver))
         }
@@ -219,7 +220,7 @@ impl SchemaModifiers {
     }
 }
 
-impl Blueprint {
+impl<'a, Value: JsonLike<'a> + Clone> Blueprint<Value> {
     pub fn query(&self) -> String {
         self.schema.query.clone()
     }
@@ -288,7 +289,7 @@ impl Blueprint {
         schema.finish().unwrap()
     }
 
-    pub fn index(&self) -> Index {
+    pub fn index(&self) -> Index<Value> {
         Index::from(self)
     }
 }

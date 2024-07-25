@@ -15,13 +15,14 @@ use crate::core::grpc::data_loader::GrpcDataLoader;
 use crate::core::http::{DataLoaderRequest, HttpDataLoader, Response};
 use crate::core::ir::model::{DataLoaderId, IoId, IO, IR};
 use crate::core::ir::Error;
+use crate::core::json::JsonLike;
 use crate::core::rest::{Checked, EndpointSet};
 use crate::core::runtime::TargetRuntime;
 
-pub struct AppContext {
+pub struct AppContext<Value> {
     pub schema: dynamic::Schema,
     pub runtime: TargetRuntime,
-    pub blueprint: Blueprint,
+    pub blueprint: Blueprint<Value>,
     pub http_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, HttpDataLoader>>>,
     pub gql_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, GraphqlDataLoader>>>,
     pub grpc_data_loaders: Arc<Vec<DataLoader<grpc::DataLoaderRequest, GrpcDataLoader>>>,
@@ -31,9 +32,9 @@ pub struct AppContext {
     pub dedupe_operation_handler: DedupeResult<OperationId, Response<Bytes>, Error>,
 }
 
-impl AppContext {
+impl<'a, Value: JsonLike<'a> + Clone> AppContext<Value> {
     pub fn new(
-        mut blueprint: Blueprint,
+        mut blueprint: Blueprint<Value>,
         runtime: TargetRuntime,
         endpoints: EndpointSet<Checked>,
     ) -> Self {

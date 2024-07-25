@@ -65,7 +65,7 @@ pub enum ValueString<'a> {
     String(Cow<'a, str>),
 }
 
-impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> EvalContext<'a, Ctx, Value> {
     fn to_raw_value<T: AsRef<str>>(&self, path: &[T]) -> Option<ValueString<'_>> {
         let ctx = self;
 
@@ -100,13 +100,13 @@ impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
     }
 }
 
-impl<'a, Ctx: ResolverContextLike> PathValue for EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> PathValue for EvalContext<'a, Ctx, Value> {
     fn raw_value<'b, T: AsRef<str>>(&'b self, path: &[T]) -> Option<ValueString<'b>> {
         self.to_raw_value(path)
     }
 }
 
-impl<'a, Ctx: ResolverContextLike> PathString for EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> PathString for EvalContext<'a, Ctx, Value> {
     fn path_string<T: AsRef<str>>(&self, path: &[T]) -> Option<Cow<'_, str>> {
         self.to_raw_value(path).and_then(|value| match value {
             ValueString::String(env) => Some(env),
@@ -115,7 +115,7 @@ impl<'a, Ctx: ResolverContextLike> PathString for EvalContext<'a, Ctx> {
     }
 }
 
-impl<'a, Ctx: ResolverContextLike> PathGraphql for EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> PathGraphql for EvalContext<'a, Ctx, Value> {
     fn path_graphql<T: AsRef<str>>(&self, path: &[T]) -> Option<String> {
         if path.len() < 2 {
             return None;
@@ -250,7 +250,7 @@ mod tests {
             req_ctx
         });
 
-        static EVAL_CTX: Lazy<EvalContext<'static, MockGraphqlContext>> =
+        static EVAL_CTX: Lazy<EvalContext<'static, MockGraphqlContext, Value>> =
             Lazy::new(|| EvalContext::new(&REQ_CTX, &MockGraphqlContext));
 
         #[test]

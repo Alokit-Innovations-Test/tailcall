@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
-
+use crate::core::json::JsonLike;
 use super::{Blueprint, Definition};
 
 // compress() takes a Blueprint and returns a compressed Blueprint. So that
 // unused types are removed.
-pub fn compress(mut blueprint: Blueprint) -> Blueprint {
+pub fn compress<'a, Value: JsonLike<'a> + Clone>(mut blueprint: Blueprint<Value>) -> Blueprint<Value> {
     let graph = build_dependency_graph(&blueprint);
 
     // Pre-defined root-types for graphql
@@ -42,7 +42,7 @@ pub fn compress(mut blueprint: Blueprint) -> Blueprint {
     blueprint
 }
 
-fn build_dependency_graph(blueprint: &Blueprint) -> HashMap<&str, Vec<&str>> {
+fn build_dependency_graph<'a, Value: JsonLike<'a> + Clone>(blueprint: &Blueprint<Value>) -> HashMap<&str, Vec<&str>> {
     let mut graph: HashMap<&str, Vec<&str>> = HashMap::new();
 
     for def in &blueprint.definitions {

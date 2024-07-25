@@ -1,17 +1,18 @@
 use super::{to_type, FieldDefinition};
 use crate::core::config::{self, Config};
 use crate::core::ir::model::{IO, IR};
+use crate::core::json::JsonLike;
 use crate::core::scalar;
 use crate::core::valid::{Valid, Validator};
 
-struct MustachePartsValidator<'a> {
+struct MustachePartsValidator<'a, Value> {
     type_of: &'a config::Type,
     config: &'a Config,
-    field: &'a FieldDefinition,
+    field: &'a FieldDefinition<Value>,
 }
 
-impl<'a> MustachePartsValidator<'a> {
-    fn new(type_of: &'a config::Type, config: &'a Config, field: &'a FieldDefinition) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> MustachePartsValidator<'a, Value> {
+    fn new(type_of: &'a config::Type, config: &'a Config, field: &'a FieldDefinition<Value>) -> Self {
         Self { type_of, config, field }
     }
 
@@ -101,7 +102,7 @@ impl<'a> MustachePartsValidator<'a> {
     }
 }
 
-impl FieldDefinition {
+impl<'a, Value: JsonLike<'a> + Clone> FieldDefinition<Value> {
     pub fn validate_field(&self, type_of: &config::Type, config: &Config) -> Valid<(), String> {
         // XXX we could use `Mustache`'s `render` method with a mock
         // struct implementing the `PathString` trait encapsulating `validation_map`
@@ -179,12 +180,13 @@ impl FieldDefinition {
 
 #[cfg(test)]
 mod test {
+    use async_graphql_value::ConstValue;
     use super::MustachePartsValidator;
     use crate::core::blueprint::{FieldDefinition, InputFieldDefinition};
     use crate::core::config::{Config, Field, Type};
     use crate::core::valid::Validator;
 
-    fn initialize_test_config_and_field() -> (Config, FieldDefinition) {
+    fn initialize_test_config_and_field() -> (Config, FieldDefinition<ConstValue>) {
         let mut config = Config::default();
 
         let mut t1_type = Type::default();

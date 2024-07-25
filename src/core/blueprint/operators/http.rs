@@ -7,11 +7,12 @@ use crate::core::ir::model::{IO, IR};
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, ValidationError, Validator};
 use crate::core::{config, helpers};
+use crate::core::json::JsonLike;
 
-pub fn compile_http(
-    config_module: &config::ConfigModule,
-    http: &config::Http,
-) -> Valid<IR, String> {
+pub fn compile_http<'a, Value: JsonLike<'a> + Clone>(
+    config_module: &'a config::ConfigModule,
+    http: &'a config::Http,
+) -> Valid<IR<Value>, String> {
     Valid::<(), String>::fail("GroupBy is only supported for GET requests".to_string())
         .when(|| !http.batch_key.is_empty() && http.method != Method::GET)
         .and(
@@ -75,10 +76,10 @@ pub fn compile_http(
         })
 }
 
-pub fn update_http<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+pub fn update_http<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition<Value>, String>::new(
         |(config_module, field, type_of, _), b_field| {
             let Some(http) = &field.http else {
                 return Valid::succeed(b_field);

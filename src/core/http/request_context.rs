@@ -18,6 +18,7 @@ use crate::core::ir::model::IoId;
 use crate::core::ir::Error;
 use crate::core::runtime::TargetRuntime;
 use crate::core::{error, grpc};
+use crate::core::json::JsonLike;
 
 #[derive(Setters)]
 pub struct RequestContext {
@@ -183,8 +184,8 @@ impl RequestContext {
     }
 }
 
-impl From<&AppContext> for RequestContext {
-    fn from(app_ctx: &AppContext) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> From<&AppContext<Value>> for RequestContext {
+    fn from(app_ctx: &AppContext<Value>) -> Self {
         let cookie_headers = if app_ctx.blueprint.server.enable_set_cookie_header {
             Some(Arc::new(Mutex::new(HeaderMap::new())))
         } else {

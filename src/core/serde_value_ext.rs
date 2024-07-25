@@ -1,44 +1,42 @@
 use std::borrow::Cow;
 
-use async_graphql::{Name, Value as GraphQLValue};
-use indexmap::IndexMap;
-
+use serde::Deserialize;
 use crate::core::blueprint::DynamicValue;
+use crate::core::json::{JsonLike, JsonObjectLike};
 use crate::core::path::PathString;
 
-pub trait ValueExt {
-    fn render_value(&self, ctx: &impl PathString) -> GraphQLValue;
+pub trait ValueExt<Value> {
+    fn render_value(&self, ctx: &impl PathString) -> Value;
 }
 
-impl ValueExt for DynamicValue<async_graphql::Value> {
-    fn render_value<'a>(&self, ctx: &'a impl PathString) -> GraphQLValue {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> ValueExt<Value> for DynamicValue<Value> {
+    fn render_value(&'a self, ctx: &'a impl PathString) -> Value {
         match self {
             DynamicValue::Value(value) => value.to_owned(),
             DynamicValue::Mustache(m) => {
                 let rendered: Cow<'a, str> = Cow::Owned(m.render(ctx));
 
-                serde_json::from_str::<GraphQLValue>(rendered.as_ref())
+                serde_json::from_str::<Value>(rendered.as_ref())
                     // parsing can fail when Mustache::render returns bare string and since
                     // that string is not wrapped with quotes serde_json will fail to parse it
                     // but, we can just use that string as is
-                    .unwrap_or_else(|_| GraphQLValue::String(rendered.into_owned()))
+                    .unwrap_or_else(|_| Value::string(rendered.as_ref()))
             }
             DynamicValue::Object(obj) => {
-                let out: IndexMap<_, _> = obj
+                let mut ans = Value::JsonObject::new();
+                obj
                     .iter()
-                    .map(|(k, v)| {
+                    .for_each(|(k, v)| {
                         let key = Cow::Borrowed(k.as_str());
                         let val = v.render_value(ctx);
+                        ans = ans.insert_key(key.as_ref(), val);
+                    });
 
-                        (Name::new(key), val)
-                    })
-                    .collect();
-
-                GraphQLValue::Object(out)
+                Value::object(ans)
             }
             DynamicValue::Array(arr) => {
                 let out: Vec<_> = arr.iter().map(|v| v.render_value(ctx)).collect();
-                GraphQLValue::List(out)
+                Value::array(out)
             }
         }
     }

@@ -10,14 +10,15 @@ use crate::core::app_context::AppContext;
 use crate::core::async_graphql_hyper::{GraphQLRequestLike, GraphQLResponse};
 use crate::core::blueprint::Blueprint;
 use crate::core::config::reader::ConfigReader;
+use crate::core::json::JsonLike;
 use crate::core::rest::EndpointSet;
 use crate::core::runtime::TargetRuntime;
 
-pub async fn create_app_ctx<T: DeserializeOwned + GraphQLRequestLike>(
+pub async fn create_app_ctx<'a, T: DeserializeOwned + GraphQLRequestLike, Value: JsonLike<'a> + Clone>(
     req: &Request<Body>,
     runtime: TargetRuntime,
     enable_fs: bool,
-) -> Result<Result<AppContext, Response<Body>>> {
+) -> Result<Result<AppContext<Value>, Response<Body>>> {
     let config_url = req
         .uri()
         .query()

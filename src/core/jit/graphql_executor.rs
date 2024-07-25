@@ -8,20 +8,21 @@ use crate::core::app_context::AppContext;
 use crate::core::http::RequestContext;
 use crate::core::jit;
 use crate::core::jit::ConstValueExecutor;
+use crate::core::json::JsonLike;
 
 #[derive(Clone)]
-pub struct JITExecutor {
-    app_ctx: Arc<AppContext>,
+pub struct JITExecutor<Value> {
+    app_ctx: Arc<AppContext<Value>>,
     req_ctx: Arc<RequestContext>,
 }
 
-impl JITExecutor {
-    pub fn new(app_ctx: Arc<AppContext>, req_ctx: Arc<RequestContext>) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> JITExecutor<Value> {
+    pub fn new(app_ctx: Arc<AppContext<Value>>, req_ctx: Arc<RequestContext>) -> Self {
         Self { app_ctx, req_ctx }
     }
 }
 
-impl Executor for JITExecutor {
+impl<'a, Value: JsonLike<'a> + Clone> Executor for JITExecutor<Value> {
     fn execute(&self, request: async_graphql::Request) -> impl Future<Output = Response> + Send {
         let request = jit::Request::from(request);
 

@@ -1,14 +1,15 @@
 use crate::core::blueprint::FieldDefinition;
 use crate::core::config::{self, ConfigModule, Field};
 use crate::core::ir::model::IR;
+use crate::core::json::JsonLike;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::Valid;
 
-pub fn update_protected<'a>(
+pub fn update_protected<'a, Value: JsonLike<'a> + Clone>(
     type_name: &'a str,
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition<Value>, String>::new(
         |(config, field, type_, _), mut b_field| {
             if field.protected.is_some() // check the field itself has marked as protected
                 || type_.protected.is_some() // check the type that contains current field

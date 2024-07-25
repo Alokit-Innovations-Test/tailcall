@@ -12,8 +12,9 @@ use crate::core::ir::model::{Cache, IR};
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, Validator};
 use crate::core::{config, scalar};
+use crate::core::json::JsonLike;
 
-pub fn to_scalar_type_definition(name: &str) -> Valid<Definition, String> {
+pub fn to_scalar_type_definition<'a, Value: JsonLike<'a> + Clone>(name: &str) -> Valid<Definition<Value>, String> {
     Valid::succeed(Definition::Scalar(ScalarTypeDefinition {
         name: name.to_string(),
         directive: Vec::new(),
@@ -24,7 +25,7 @@ pub fn to_scalar_type_definition(name: &str) -> Valid<Definition, String> {
     }))
 }
 
-pub fn to_union_type_definition((name, u): (&String, &Union)) -> Definition {
+pub fn to_union_type_definition<'a, Value: JsonLike<'a> + Clone>((name, u): (&String, &Union)) -> Definition<Value> {
     Definition::Union(UnionTypeDefinition {
         name: name.to_owned(),
         description: u.doc.clone(),
@@ -33,9 +34,9 @@ pub fn to_union_type_definition((name, u): (&String, &Union)) -> Definition {
     })
 }
 
-pub fn to_input_object_type_definition(
-    definition: ObjectTypeDefinition,
-) -> Valid<Definition, String> {
+pub fn to_input_object_type_definition<'a, Value: JsonLike<'a> + Clone>(
+    definition: ObjectTypeDefinition<Value>,
+) -> Valid<Definition<Value>, String> {
     Valid::succeed(Definition::InputObject(InputObjectTypeDefinition {
         name: definition.name,
         fields: definition
@@ -52,7 +53,7 @@ pub fn to_input_object_type_definition(
     }))
 }
 
-pub fn to_interface_type_definition(definition: ObjectTypeDefinition) -> Valid<Definition, String> {
+pub fn to_interface_type_definition<'a, Value: JsonLike<'a> + Clone>(definition: ObjectTypeDefinition<Value>) -> Valid<Definition<Value>, String> {
     Valid::succeed(Definition::Interface(InterfaceTypeDefinition {
         name: definition.name,
         fields: definition.fields,
@@ -229,7 +230,7 @@ fn process_path(context: ProcessPathContext) -> Valid<Type, String> {
     Valid::succeed(to_type(field, Some(is_required)))
 }
 
-fn to_enum_type_definition((name, eu): (&String, &Enum)) -> Definition {
+fn to_enum_type_definition<'a, Value: JsonLike<'a> + Clone>((name, eu): (&String, &Enum)) -> Definition<Value> {
     Definition::Enum(EnumTypeDefinition {
         name: name.to_owned(),
         directives: Vec::new(),
@@ -246,11 +247,11 @@ fn to_enum_type_definition((name, eu): (&String, &Enum)) -> Definition {
     })
 }
 
-fn to_object_type_definition(
+fn to_object_type_definition<'a, Value: JsonLike<'a> + Clone>(
     name: &str,
     type_of: &config::Type,
     config_module: &ConfigModule,
-) -> Valid<Definition, String> {
+) -> Valid<Definition<Value>, String> {
     to_fields(name, type_of, config_module).map(|fields| {
         Definition::Object(ObjectTypeDefinition {
             name: name.to_string(),
@@ -261,10 +262,10 @@ fn to_object_type_definition(
     })
 }
 
-fn update_args<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+fn update_args<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         move |(_, field, _typ, name), _| {
             // TODO: assert type name
             Valid::from_iter(field.args.iter(), |(name, arg)| {
@@ -295,10 +296,10 @@ fn item_is_numberic(list: &[String]) -> bool {
     })
 }
 
-fn update_resolver_from_path(
+fn update_resolver_from_path<'a, Value: JsonLike<'a> + Clone>(
     context: &ProcessPathContext,
-    base_field: blueprint::FieldDefinition,
-) -> Valid<blueprint::FieldDefinition, String> {
+    base_field: blueprint::FieldDefinition<Value>,
+) -> Valid<blueprint::FieldDefinition<Value>, String> {
     let has_index = item_is_numberic(context.path);
 
     process_path(context.clone()).and_then(|of_type| {
@@ -323,10 +324,10 @@ fn update_resolver_from_path(
 /// resolvers that cannot be resolved from the root of the schema. This function
 /// finds such dangling resolvers and creates a resolvable path from the root
 /// schema.
-pub fn fix_dangling_resolvers<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+pub fn fix_dangling_resolvers<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         move |(config, field, _, name), mut b_field| {
             let mut set = HashSet::new();
             if !field.has_resolver()
@@ -344,10 +345,10 @@ pub fn fix_dangling_resolvers<'a>(
 
 /// Wraps the IO Expression with Expression::Cached
 /// if `Field::cache` is present for that field
-pub fn update_cache_resolvers<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+pub fn update_cache_resolvers<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         move |(_config, field, typ, _name), mut b_field| {
             if let Some(config::Cache { max_age }) = field.cache.as_ref().or(typ.cache.as_ref()) {
                 b_field.map_expr(|expression| Cache::wrap(*max_age, expression))
@@ -367,11 +368,11 @@ fn validate_field_type_exist(config: &Config, field: &Field) -> Valid<(), String
     }
 }
 
-fn to_fields(
+fn to_fields<'a, Value: JsonLike<'a> + Clone>(
     object_name: &str,
     type_of: &config::Type,
     config_module: &ConfigModule,
-) -> Valid<Vec<FieldDefinition>, String> {
+) -> Valid<Vec<FieldDefinition<Value>>, String> {
     let operation_type = if config_module
         .schema
         .mutation
@@ -404,7 +405,7 @@ fn to_fields(
 
     let to_added_field = |add_field: &config::AddField,
                           type_of: &config::Type|
-     -> Valid<blueprint::FieldDefinition, String> {
+     -> Valid<blueprint::FieldDefinition<Value>, String> {
         let source_field = type_of
             .fields
             .iter()
@@ -485,14 +486,14 @@ fn to_fields(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn to_field_definition(
+pub fn to_field_definition<'a, Value: JsonLike<'a> + Clone>(
     field: &Field,
     operation_type: &GraphQLOperationType,
     object_name: &str,
     config_module: &ConfigModule,
     type_of: &config::Type,
     name: &String,
-) -> Valid<FieldDefinition, String> {
+) -> Valid<FieldDefinition<Value>, String> {
     let directives = field.resolvable_directives();
 
     if directives.len() > 1 {
@@ -521,8 +522,8 @@ pub fn to_field_definition(
         )
 }
 
-pub fn to_definitions<'a>() -> TryFold<'a, ConfigModule, Vec<Definition>, String> {
-    TryFold::<ConfigModule, Vec<Definition>, String>::new(|config_module, _| {
+pub fn to_definitions<'a, Value: JsonLike<'a> + Clone>() -> TryFold<'a, ConfigModule, Vec<Definition<Value>>, String> {
+    TryFold::<ConfigModule, Vec<Definition<Value>>, String>::new(|config_module, _| {
         Valid::from_iter(config_module.types.iter(), |(name, type_)| {
             if type_.scalar() {
                 to_scalar_type_definition(name).trace(name)

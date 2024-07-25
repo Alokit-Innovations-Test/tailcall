@@ -12,6 +12,7 @@ use tracing::Instrument;
 use crate::core::blueprint::{Blueprint, Definition, Type};
 use crate::core::http::RequestContext;
 use crate::core::ir::{EvalContext, ResolverContext, TypeName};
+use crate::core::json::JsonLike;
 use crate::core::scalar;
 
 fn to_type_ref(type_of: &Type) -> dynamic::TypeRef {
@@ -59,8 +60,8 @@ fn set_default_value(
     }
 }
 
-fn to_field_value<'a>(
-    ctx: &mut EvalContext<'a, ResolverContext<'a>>,
+fn to_field_value<'a, Value: JsonLike<'a> + Clone>(
+    ctx: &mut EvalContext<'a, ResolverContext<'a>, Value>,
     value: async_graphql::Value,
 ) -> Result<FieldValue<'static>> {
     let type_name = ctx.type_name.take();
@@ -82,7 +83,7 @@ fn to_field_value<'a>(
     })
 }
 
-fn to_type(def: &Definition) -> dynamic::Type {
+fn to_type<'a, Value: JsonLike<'a> + Clone>(def: &Definition<Value>) -> dynamic::Type {
     match def {
         Definition::Object(def) => {
             let mut object = dynamic::Object::new(def.name.clone());
@@ -223,8 +224,8 @@ fn to_type(def: &Definition) -> dynamic::Type {
     }
 }
 
-impl From<&Blueprint> for SchemaBuilder {
-    fn from(blueprint: &Blueprint) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> From<&Blueprint<Value>> for SchemaBuilder {
+    fn from(blueprint: &Blueprint<Value>) -> Self {
         let query = blueprint.query();
         let mutation = blueprint.mutation();
         let mut schema = dynamic::Schema::build(query.as_str(), mutation.as_deref(), None);

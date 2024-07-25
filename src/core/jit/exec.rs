@@ -174,7 +174,7 @@ pub trait IRExecutor {
     type Error;
     async fn execute<'a>(
         &'a self,
-        ir: &'a IR,
+        ir: &'a IR<Self::Output>,
         ctx: &'a Context<'a, Self::Input, Self::Output>,
     ) -> Result<Self::Output, Self::Error>;
 }

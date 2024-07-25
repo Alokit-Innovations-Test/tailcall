@@ -23,15 +23,15 @@ use crate::core::{grpc, http, WorkerIO};
 /// and getting a response. There are optimizations and customizations that the
 /// user might have configured. HttpRequestExecutor is responsible for handling
 /// all of that.
-pub struct EvalHttp<'a, 'ctx, Context: ResolverContextLike + Sync> {
-    evaluation_ctx: &'ctx EvalContext<'a, Context>,
+pub struct EvalHttp<'a, 'ctx, Context: ResolverContextLike + Sync, Value> {
+    evaluation_ctx: &'ctx EvalContext<'a, Context, Value>,
     data_loader: Option<&'a DataLoader<DataLoaderRequest, HttpDataLoader>>,
     request_template: &'a http::RequestTemplate,
 }
 
-impl<'a, 'ctx, Context: ResolverContextLike + Sync> EvalHttp<'a, 'ctx, Context> {
+impl<'a, 'ctx, Context: ResolverContextLike + Sync, Value: JsonLike<'a> + Clone> EvalHttp<'a, 'ctx, Context, Value> {
     pub fn new(
-        evaluation_ctx: &'ctx EvalContext<'a, Context>,
+        evaluation_ctx: &'ctx EvalContext<'a, Context, Value>,
         request_template: &'a RequestTemplate,
         id: &Option<DataLoaderId>,
     ) -> Self {
@@ -117,9 +117,10 @@ impl<'a, 'ctx, Context: ResolverContextLike + Sync> EvalHttp<'a, 'ctx, Context> 
 pub async fn execute_request_with_dl<
     'ctx,
     Ctx: ResolverContextLike,
+    Value: JsonLike<'ctx> + Clone,
     Dl: Loader<DataLoaderRequest, Value = Response<async_graphql::Value>, Error = Arc<anyhow::Error>>,
 >(
-    ctx: &EvalContext<'ctx, Ctx>,
+    ctx: &EvalContext<'ctx, Ctx, Value>,
     req: Request,
     data_loader: Option<&DataLoader<DataLoaderRequest, Dl>>,
 ) -> Result<Response<async_graphql::Value>, Error> {
@@ -140,8 +141,8 @@ pub async fn execute_request_with_dl<
         .unwrap_or_default())
 }
 
-pub fn set_headers<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+pub fn set_headers<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     res: &Response<async_graphql::Value>,
 ) {
     set_cache_control(ctx, res);
@@ -149,8 +150,8 @@ pub fn set_headers<Ctx: ResolverContextLike>(
     set_experimental_headers(ctx, res);
 }
 
-pub fn set_cache_control<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+pub fn set_cache_control<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     res: &Response<async_graphql::Value>,
 ) {
     if ctx.request_ctx.server.get_enable_cache_control() && res.status.is_success() {
@@ -160,15 +161,15 @@ pub fn set_cache_control<Ctx: ResolverContextLike>(
     }
 }
 
-fn set_experimental_headers<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+fn set_experimental_headers<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     res: &Response<async_graphql::Value>,
 ) {
     ctx.request_ctx.add_x_headers(&res.headers);
 }
 
-fn set_cookie_headers<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+fn set_cookie_headers<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     res: &Response<async_graphql::Value>,
 ) {
     if res.status.is_success() {
@@ -176,8 +177,8 @@ fn set_cookie_headers<Ctx: ResolverContextLike>(
     }
 }
 
-pub async fn execute_raw_request<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+pub async fn execute_raw_request<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     req: Request,
 ) -> Result<Response<async_graphql::Value>, Error> {
     let response = ctx
@@ -192,8 +193,8 @@ pub async fn execute_raw_request<Ctx: ResolverContextLike>(
     Ok(response)
 }
 
-pub async fn execute_raw_grpc_request<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+pub async fn execute_raw_grpc_request<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     req: Request,
     operation: &ProtobufOperation,
 ) -> Result<Response<async_graphql::Value>, Error> {
@@ -203,14 +204,16 @@ pub async fn execute_raw_grpc_request<Ctx: ResolverContextLike>(
 }
 
 pub async fn execute_grpc_request_with_dl<
+    'a,
     Ctx: ResolverContextLike,
+    Value: JsonLike<'a> + Clone,
     Dl: Loader<
         grpc::DataLoaderRequest,
         Value = Response<async_graphql::Value>,
         Error = Arc<anyhow::Error>,
     >,
 >(
-    ctx: &EvalContext<'_, Ctx>,
+    ctx: &EvalContext<'a, Ctx, Value>,
     rendered: RenderedRequestTemplate,
     data_loader: Option<&DataLoader<grpc::DataLoaderRequest, Dl>>,
 ) -> Result<Response<async_graphql::Value>, Error> {
@@ -231,8 +234,8 @@ pub async fn execute_grpc_request_with_dl<
         .unwrap_or_default())
 }
 
-pub fn parse_graphql_response<Ctx: ResolverContextLike>(
-    ctx: &EvalContext<'_, Ctx>,
+pub fn parse_graphql_response<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone>(
+    ctx: &EvalContext<'a, Ctx, Value>,
     res: Response<async_graphql::Value>,
     field_name: &str,
 ) -> Result<async_graphql::Value, Error> {

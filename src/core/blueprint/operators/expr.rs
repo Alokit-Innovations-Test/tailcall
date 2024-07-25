@@ -5,6 +5,7 @@ use crate::core::config;
 use crate::core::config::Field;
 use crate::core::ir::model::IR;
 use crate::core::ir::model::IR::Dynamic;
+use crate::core::json::JsonLike;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, ValidationError, Validator};
 
@@ -29,7 +30,7 @@ pub struct CompileExpr<'a> {
     pub validate: bool,
 }
 
-pub fn compile_expr(inputs: CompileExpr) -> Valid<IR, String> {
+pub fn compile_expr<'a, Value: JsonLike<'a> + Clone>(inputs: CompileExpr) -> Valid<IR<Value>, String> {
     let config_module = inputs.config_module;
     let field = inputs.field;
     let value = inputs.value;
@@ -59,10 +60,10 @@ pub fn compile_expr(inputs: CompileExpr) -> Valid<IR, String> {
     })
 }
 
-pub fn update_const_field<'a>(
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+pub fn update_const_field<'a, Value: JsonLike<'a> + Clone>(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         |(config_module, field, _, _), b_field| {
             let Some(const_field) = &field.const_field else {
                 return Valid::succeed(b_field);

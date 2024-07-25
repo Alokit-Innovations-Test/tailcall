@@ -55,7 +55,7 @@ impl<'ctx> IRExecutor for ConstValueExec<'ctx> {
 
     async fn execute<'a>(
         &'a self,
-        ir: &'a IR,
+        ir: &'a IR<Self::Output>,
         ctx: &'a Context<'a, Self::Input, Self::Output>,
     ) -> Result<Self::Output> {
         let req_context = &self.req_context;

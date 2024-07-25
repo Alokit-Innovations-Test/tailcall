@@ -4,15 +4,16 @@ use crate::core::blueprint::*;
 use crate::core::config;
 use crate::core::config::{Field, GraphQLOperationType};
 use crate::core::ir::model::IR;
+use crate::core::json::JsonLike;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, ValidationError, Validator};
 
-pub fn update_call<'a>(
+pub fn update_call<'a, Value: JsonLike<'a> + Clone>(
     operation_type: &'a GraphQLOperationType,
     object_name: &'a str,
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &str), FieldDefinition<Value>, String>::new(
         move |(config, field, _, name), b_field| {
             let Some(ref calls) = field.call else {
                 return Valid::succeed(b_field);
@@ -24,12 +25,12 @@ pub fn update_call<'a>(
     )
 }
 
-fn compile_call(
+fn compile_call<'a, Value: JsonLike<'a> + Clone>(
     config_module: &ConfigModule,
     call: &config::Call,
     operation_type: &GraphQLOperationType,
     object_name: &str,
-) -> Valid<FieldDefinition, String> {
+) -> Valid<FieldDefinition<Value>, String> {
     Valid::from_iter(call.steps.iter(), |step| {
         get_field_and_field_name(step, config_module).and_then(|(field, field_name, type_of)| {
             let args = step.args.iter();

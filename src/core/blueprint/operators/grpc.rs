@@ -9,7 +9,7 @@ use crate::core::config::{Config, ConfigModule, Field, GraphQLOperationType, Grp
 use crate::core::grpc::protobuf::{ProtobufOperation, ProtobufSet};
 use crate::core::grpc::request_template::RequestTemplate;
 use crate::core::ir::model::{IO, IR};
-use crate::core::json::JsonSchema;
+use crate::core::json::{JsonLike, JsonSchema};
 use crate::core::mustache::Mustache;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, ValidationError, Validator};
@@ -156,7 +156,7 @@ impl TryFrom<&str> for GrpcMethod {
     }
 }
 
-pub fn compile_grpc(inputs: CompileGrpc) -> Valid<IR, String> {
+pub fn compile_grpc<'a, Value: JsonLike<'a> + Clone>(inputs: CompileGrpc) -> Valid<IR<Value>, String> {
     let config_module = inputs.config_module;
     let operation_type = inputs.operation_type;
     let field = inputs.field;
@@ -210,11 +210,11 @@ pub fn compile_grpc(inputs: CompileGrpc) -> Valid<IR, String> {
         })
 }
 
-pub fn update_grpc<'a>(
+pub fn update_grpc<'a, Value: JsonLike<'a> + Clone>(
     operation_type: &'a GraphQLOperationType,
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition, String>
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a config::Type, &'a str), FieldDefinition<Value>, String>
 {
-    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition, String>::new(
+    TryFold::<(&ConfigModule, &Field, &config::Type, &'a str), FieldDefinition<Value>, String>::new(
         |(config_module, field, type_of, _name), b_field| {
             let Some(grpc) = &field.grpc else {
                 return Valid::succeed(b_field);

@@ -106,7 +106,7 @@ impl FieldId {
 pub struct Field<Extensions, Input> {
     pub id: FieldId,
     pub name: String,
-    pub ir: Option<IR>,
+    pub ir: Option<IR<Input>>,
     pub type_of: crate::core::blueprint::Type,
     pub skip: Option<Variable>,
     pub include: Option<Variable>,

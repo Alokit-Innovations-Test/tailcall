@@ -6,6 +6,7 @@ use crate::core::graphql::RequestTemplate;
 use crate::core::helpers;
 use crate::core::ir::model::{IO, IR};
 use crate::core::ir::RelatedFields;
+use crate::core::json::JsonLike;
 use crate::core::try_fold::TryFold;
 use crate::core::valid::{Valid, ValidationError, Validator};
 
@@ -27,12 +28,12 @@ fn create_related_fields(config: &Config, type_name: &str) -> RelatedFields {
     RelatedFields(map)
 }
 
-pub fn compile_graphql(
+pub fn compile_graphql<'a, Value: JsonLike<'a> + Clone>(
     config: &Config,
     operation_type: &GraphQLOperationType,
     type_name: &str,
     graphql: &GraphQL,
-) -> Valid<IR, String> {
+) -> Valid<IR<Value>, String> {
     let args = graphql.args.as_ref();
     Valid::from_option(
         graphql
@@ -62,10 +63,10 @@ pub fn compile_graphql(
     })
 }
 
-pub fn update_graphql<'a>(
+pub fn update_graphql<'a, Value: JsonLike<'a> + Clone>(
     operation_type: &'a GraphQLOperationType,
-) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a Type, &'a str), FieldDefinition, String> {
-    TryFold::<(&ConfigModule, &Field, &Type, &'a str), FieldDefinition, String>::new(
+) -> TryFold<'a, (&'a ConfigModule, &'a Field, &'a Type, &'a str), FieldDefinition<Value>, String> {
+    TryFold::<(&ConfigModule, &Field, &Type, &'a str), FieldDefinition<Value>, String>::new(
         |(config, field, type_of, _), b_field| {
             let Some(graphql) = &field.graphql else {
                 return Valid::succeed(b_field);

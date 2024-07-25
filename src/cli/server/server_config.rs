@@ -7,17 +7,18 @@ use crate::cli::runtime::init;
 use crate::core::app_context::AppContext;
 use crate::core::blueprint::telemetry::TelemetryExporter;
 use crate::core::blueprint::{Blueprint, Http};
+use crate::core::json::JsonLike;
 use crate::core::rest::{EndpointSet, Unchecked};
 use crate::core::schema_extension::SchemaExtension;
 
-pub struct ServerConfig {
-    pub blueprint: Blueprint,
-    pub app_ctx: Arc<AppContext>,
+pub struct ServerConfig<Value> {
+    pub blueprint: Blueprint<Value>,
+    pub app_ctx: Arc<AppContext<Value>>,
 }
 
-impl ServerConfig {
+impl<'a, Value: JsonLike<'a> + Clone> ServerConfig<Value> {
     pub async fn new(
-        blueprint: Blueprint,
+        blueprint: Blueprint<Value>,
         endpoints: EndpointSet<Unchecked>,
     ) -> anyhow::Result<Self> {
         let mut rt = init(&blueprint);

@@ -1,15 +1,15 @@
 use async_graphql_value::{ConstValue, Name};
 use indexmap::IndexMap;
 use serde_json::Value;
-
+use crate::core::json::{JsonLike, JsonObjectLike};
 use crate::core::mustache::Mustache;
 
 #[derive(Debug, Clone)]
-pub enum DynamicValue<A> {
-    Value(A),
+pub enum DynamicValue<Value> {
+    Value(Value),
     Mustache(Mustache),
-    Object(IndexMap<Name, DynamicValue<A>>),
-    Array(Vec<DynamicValue<A>>),
+    Object(IndexMap<Name, DynamicValue<Value>>),
+    Array(Vec<DynamicValue<Value>>),
 }
 
 impl TryFrom<&DynamicValue<ConstValue>> for ConstValue {

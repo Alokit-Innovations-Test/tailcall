@@ -3,24 +3,25 @@ use indexmap::IndexMap;
 use crate::core::blueprint::{
     Blueprint, Definition, FieldDefinition, InputFieldDefinition, SchemaDefinition,
 };
+use crate::core::json::JsonLike;
 use crate::core::scalar;
 
 ///
 /// A read optimized index of all the types in the Blueprint. Provide O(1)
 /// access to getting any field information.
 
-pub struct Index {
-    map: IndexMap<String, (Definition, IndexMap<String, QueryField>)>,
+pub struct Index<Value> {
+    map: IndexMap<String, (Definition<Value>, IndexMap<String, QueryField<Value>>)>,
     schema: SchemaDefinition,
 }
 
 #[derive(Debug)]
-pub enum QueryField {
-    Field((FieldDefinition, IndexMap<String, InputFieldDefinition>)),
+pub enum QueryField<Value> {
+    Field((FieldDefinition<Value>, IndexMap<String, InputFieldDefinition>)),
     InputField(InputFieldDefinition),
 }
 
-impl QueryField {
+impl<Value> QueryField<Value> {
     pub fn get_arg(&self, arg_name: &str) -> Option<&InputFieldDefinition> {
         match self {
             QueryField::Field((_, args)) => args.get(arg_name),
@@ -29,14 +30,14 @@ impl QueryField {
     }
 }
 
-impl Index {
+impl<Value> Index<Value> {
     pub fn type_is_scalar(&self, type_name: &str) -> bool {
         let def = self.map.get(type_name).map(|(def, _)| def);
 
         matches!(def, Some(Definition::Scalar(_))) || scalar::Scalar::is_predefined(type_name)
     }
 
-    pub fn get_field(&self, type_name: &str, field_name: &str) -> Option<&QueryField> {
+    pub fn get_field(&self, type_name: &str, field_name: &str) -> Option<&QueryField<Value>> {
         self.map
             .get(type_name)
             .and_then(|(_, fields_map)| fields_map.get(field_name))
@@ -51,8 +52,8 @@ impl Index {
     }
 }
 
-impl From<&Blueprint> for Index {
-    fn from(blueprint: &Blueprint) -> Self {
+impl<'a, Value: JsonLike<'a> + Clone> From<&Blueprint<Value>> for Index<Value> {
+    fn from(blueprint: &Blueprint<Value>) -> Self {
         let mut map = IndexMap::new();
 
         for definition in blueprint.definitions.iter() {

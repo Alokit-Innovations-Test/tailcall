@@ -12,25 +12,26 @@ use crate::core::config::group_by::GroupBy;
 use crate::core::graphql::{self};
 use crate::core::http::HttpFilter;
 use crate::core::{grpc, http};
+use crate::core::json::JsonLike;
 
 #[derive(Clone, Debug, Display)]
-pub enum IR {
+pub enum IR<Value> {
     Dynamic(DynamicValue<Value>),
     #[strum(to_string = "{0}")]
     IO(IO),
     Cache(Cache),
     // TODO: Path can be implement using Pipe
-    Path(Box<IR>, Vec<String>),
+    Path(Box<IR<Value>>, Vec<String>),
     ContextPath(Vec<String>),
-    Protect(Box<IR>),
-    Map(Map),
-    Pipe(Box<IR>, Box<IR>),
-    Discriminate(Discriminator, Box<IR>),
+    Protect(Box<IR<Value>>),
+    Map(Map<Value>),
+    Pipe(Box<IR<Value>>, Box<IR<Value>>),
+    Discriminate(Discriminator, Box<IR<Value>>),
 }
 
 #[derive(Clone, Debug)]
-pub struct Map {
-    pub input: Box<IR>,
+pub struct Map<Value> {
+    pub input: Box<IR<Value>>,
     // accept key return value instead of
     pub map: HashMap<String, String>,
 }
@@ -100,7 +101,7 @@ impl Cache {
     /// Wraps an expression with the cache primitive.
     /// Performance DFS on the cache on the expression and identifies all the IO
     /// nodes. Then wraps each IO node with the cache primitive.
-    pub fn wrap(max_age: NonZeroU64, expr: IR) -> IR {
+    pub fn wrap<Value>(max_age: NonZeroU64, expr: IR<Value>) -> IR<Value> {
         expr.modify(move |expr| match expr {
             IR::IO(io) => Some(IR::Cache(Cache { max_age, io: Box::new(io.to_owned()) })),
             _ => None,
@@ -108,20 +109,20 @@ impl Cache {
     }
 }
 
-impl IR {
+impl<Value> IR<Value> {
     pub fn pipe(self, next: Self) -> Self {
         IR::Pipe(Box::new(self), Box::new(next))
     }
 
-    pub fn modify(self, mut f: impl FnMut(&IR) -> Option<IR>) -> IR {
+    pub fn modify(self, mut f: impl FnMut(&Self) -> Option<Self>) -> Self {
         self.modify_inner(&mut f)
     }
 
-    fn modify_box<F: FnMut(&IR) -> Option<IR>>(self, modifier: &mut F) -> Box<IR> {
+    fn modify_box<F: FnMut(&Self) -> Option<Self>>(self, modifier: &mut F) -> Box<Self> {
         Box::new(self.modify_inner(modifier))
     }
 
-    fn modify_inner<F: FnMut(&IR) -> Option<IR>>(self, modifier: &mut F) -> IR {
+    fn modify_inner<F: FnMut(&Self) -> Option<Self>>(self, modifier: &mut F) -> Self {
         let modified = modifier(&self);
         match modified {
             Some(expr) => expr,
@@ -155,8 +156,8 @@ impl IR {
     }
 }
 
-impl<'a, Ctx: ResolverContextLike + Sync> CacheKey<EvalContext<'a, Ctx>> for IO {
-    fn cache_key(&self, ctx: &EvalContext<'a, Ctx>) -> Option<IoId> {
+impl<'a, Ctx: ResolverContextLike + Sync, Value: JsonLike<'a> + Clone> CacheKey<EvalContext<'a, Ctx, Value>> for IO {
+    fn cache_key(&self, ctx: &EvalContext<'a, Ctx, Value>) -> Option<IoId> {
         match self {
             IO::Http { req_template, .. } => req_template.cache_key(ctx),
             IO::Grpc { req_template, .. } => req_template.cache_key(ctx),
