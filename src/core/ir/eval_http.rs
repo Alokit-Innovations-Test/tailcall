@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_graphql::from_value;
 use reqwest::Request;
-
+use serde::Deserialize;
 use super::model::DataLoaderId;
 use super::{EvalContext, ResolverContextLike};
 use crate::core::data_loader::{DataLoader, Loader};
@@ -29,7 +29,7 @@ pub struct EvalHttp<'a, 'ctx, Context: ResolverContextLike + Sync, Value> {
     request_template: &'a http::RequestTemplate,
 }
 
-impl<'a, 'ctx, Context: ResolverContextLike + Sync, Value: JsonLike<'a> + Clone> EvalHttp<'a, 'ctx, Context, Value> {
+impl<'a, 'ctx, Context: ResolverContextLike + Sync, Value: JsonLike<'a> + Deserialize<'a> + Clone> EvalHttp<'a, 'ctx, Context, Value> {
     pub fn new(
         evaluation_ctx: &'ctx EvalContext<'a, Context, Value>,
         request_template: &'a RequestTemplate,

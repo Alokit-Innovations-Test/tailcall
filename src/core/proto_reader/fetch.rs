@@ -13,6 +13,7 @@ use crate::core::config::ConfigReaderContext;
 use crate::core::grpc::protobuf::ProtobufSet;
 use crate::core::grpc::request_template::RequestBody;
 use crate::core::grpc::RequestTemplate;
+use crate::core::json::JsonLike;
 use crate::core::mustache::Mustache;
 use crate::core::runtime::TargetRuntime;
 
@@ -69,14 +70,14 @@ struct ReflectionResponse {
     file_descriptor_response: Option<FileDescriptorProtoResponse>,
 }
 
-pub struct GrpcReflection {
+pub struct GrpcReflection<Value> {
     server_reflection_method: GrpcMethod,
     url: String,
-    target_runtime: TargetRuntime,
+    target_runtime: TargetRuntime<Value>,
 }
 
-impl GrpcReflection {
-    pub fn new<T: AsRef<str>>(url: T, target_runtime: TargetRuntime) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> GrpcReflection<Value> {
+    pub fn new<T: AsRef<str>>(url: T, target_runtime: TargetRuntime<Value>) -> Self {
         let server_reflection_method = GrpcMethod {
             package: "grpc.reflection.v1alpha".to_string(),
             service: "ServerReflection".to_string(),

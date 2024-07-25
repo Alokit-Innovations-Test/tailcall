@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_graphql::{Data, Executor, Response};
 use futures_util::stream::BoxStream;
-
+use serde::Deserialize;
 use crate::core::app_context::AppContext;
 use crate::core::http::RequestContext;
 use crate::core::jit;
@@ -13,11 +13,11 @@ use crate::core::json::JsonLike;
 #[derive(Clone)]
 pub struct JITExecutor<Value> {
     app_ctx: Arc<AppContext<Value>>,
-    req_ctx: Arc<RequestContext>,
+    req_ctx: Arc<RequestContext<Value>>,
 }
 
-impl<'a, Value: JsonLike<'a> + Clone> JITExecutor<Value> {
-    pub fn new(app_ctx: Arc<AppContext<Value>>, req_ctx: Arc<RequestContext>) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> JITExecutor<Value> {
+    pub fn new(app_ctx: Arc<AppContext<Value>>, req_ctx: Arc<RequestContext<Value>>) -> Self {
         Self { app_ctx, req_ctx }
     }
 }
