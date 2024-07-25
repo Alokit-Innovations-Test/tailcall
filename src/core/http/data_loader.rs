@@ -5,7 +5,7 @@ use std::time::Duration;
 use async_graphql::async_trait;
 use async_graphql::futures_util::future::join_all;
 use async_graphql_value::ConstValue;
-
+use serde::Deserialize;
 use crate::core::config::group_by::GroupBy;
 use crate::core::config::Batch;
 use crate::core::data_loader::{DataLoader, Loader};
@@ -32,13 +32,13 @@ fn get_body_value_list(body_value: &HashMap<String, Vec<&ConstValue>>, id: &str)
 }
 
 #[derive(Clone)]
-pub struct HttpDataLoader {
-    pub runtime: TargetRuntime,
+pub struct HttpDataLoader<Value> {
+    pub runtime: TargetRuntime<Value>,
     pub group_by: Option<GroupBy>,
     pub body: fn(&HashMap<String, Vec<&ConstValue>>, &str) -> ConstValue,
 }
-impl HttpDataLoader {
-    pub fn new(runtime: TargetRuntime, group_by: Option<GroupBy>, is_list: bool) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> HttpDataLoader<Value> {
+    pub fn new(runtime: TargetRuntime<Value>, group_by: Option<GroupBy>, is_list: bool) -> Self {
         HttpDataLoader {
             runtime,
             group_by,
@@ -50,7 +50,7 @@ impl HttpDataLoader {
         }
     }
 
-    pub fn to_data_loader(self, batch: Batch) -> DataLoader<DataLoaderRequest, HttpDataLoader> {
+    pub fn to_data_loader(self, batch: Batch) -> DataLoader<DataLoaderRequest, HttpDataLoader<Value>> {
         DataLoader::new(self)
             .delay(Duration::from_millis(batch.delay as u64))
             .max_batch_size(batch.max_size.unwrap_or_default())
@@ -58,7 +58,7 @@ impl HttpDataLoader {
 }
 
 #[async_trait::async_trait]
-impl Loader<DataLoaderRequest> for HttpDataLoader {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Loader<DataLoaderRequest> for HttpDataLoader<Value> {
     type Value = Response<async_graphql::Value>;
     type Error = Arc<anyhow::Error>;
 

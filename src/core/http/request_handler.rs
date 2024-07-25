@@ -55,7 +55,7 @@ fn not_found() -> Result<Response<Body>> {
         .body(Body::empty())?)
 }
 
-fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, app_ctx: &AppContext<Value>) -> RequestContext {
+fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, app_ctx: Arc<AppContext<Value>>) -> RequestContext {
     let upstream = app_ctx.blueprint.upstream.clone();
     let allowed = upstream.allowed_headers;
     let allowed_headers = create_allowed_headers(req.headers(), &allowed);
@@ -66,7 +66,7 @@ fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, 
 
 fn update_cache_control_header<'a, Value: JsonLike<'a> + Clone>(
     response: GraphQLResponse,
-    app_ctx: &'a AppContext<Value>,
+    app_ctx: Arc<AppContext<Value>>,
     req_ctx: Arc<RequestContext>,
 ) -> GraphQLResponse {
     if app_ctx.blueprint.server.enable_cache_control_header {
@@ -80,7 +80,7 @@ fn update_cache_control_header<'a, Value: JsonLike<'a> + Clone>(
 pub fn update_response_headers<'a, Value: JsonLike<'a> + Clone>(
     resp: &mut hyper::Response<hyper::Body>,
     req_ctx: &RequestContext,
-    app_ctx: &'a AppContext<Value>,
+    app_ctx: Arc<AppContext<Value>>,
 ) {
     if !app_ctx.blueprint.server.response_headers.is_empty() {
         // Add static response headers
@@ -101,11 +101,11 @@ pub fn update_response_headers<'a, Value: JsonLike<'a> + Clone>(
 #[tracing::instrument(skip_all, fields(otel.name = "graphQL", otel.kind = ?SpanKind::Server))]
 pub async fn graphql_request<'a, T: DeserializeOwned + GraphQLRequestLike, Value: JsonLike<'a> + Clone>(
     req: Request<Body>,
-    app_ctx: &Arc<AppContext<Value>>,
+    app_ctx: Arc<AppContext<Value>>,
     req_counter: &mut RequestCounter,
 ) -> Result<Response<Body>> {
     req_counter.set_http_route("/graphql");
-    let req_ctx = Arc::new(create_request_context(&req, app_ctx));
+    let req_ctx = Arc::new(create_request_context(&req, app_ctx.clone()));
     let (req, body) = req.into_parts();
     let bytes = hyper::body::to_bytes(body).await?;
     let graphql_request = serde_json::from_slice::<T>(&bytes);
@@ -115,7 +115,7 @@ pub async fn graphql_request<'a, T: DeserializeOwned + GraphQLRequestLike, Value
                 Ok(execute_query(app_ctx, &req_ctx, request).await?)
             } else {
                 let operation_id = request.operation_id(&req.headers);
-                let out = app_ctx
+                let out = app_ctx.clone()
                     .dedupe_operation_handler
                     .dedupe(&operation_id, || {
                         Box::pin(async move {
@@ -144,7 +144,7 @@ pub async fn graphql_request<'a, T: DeserializeOwned + GraphQLRequestLike, Value
 }
 
 async fn execute_query<'a, T: DeserializeOwned + GraphQLRequestLike, Value: JsonLike<'a> + Clone>(
-    app_ctx: &Arc<AppContext<Value>>,
+    app_ctx: Arc<AppContext<Value>>,
     req_ctx: &Arc<RequestContext>,
     request: T,
 ) -> anyhow::Result<Response<Body>> {
@@ -155,7 +155,7 @@ async fn execute_query<'a, T: DeserializeOwned + GraphQLRequestLike, Value: Json
     } else {
         request.data(req_ctx.clone()).execute(&app_ctx.schema).await
     };
-    response = update_cache_control_header(response, app_ctx, req_ctx.clone());
+    response = update_cache_control_header(response, app_ctx.clone(), req_ctx.clone());
 
     let mut resp = response.into_response()?;
     update_response_headers(&mut resp, req_ctx, app_ctx);
@@ -265,8 +265,9 @@ async fn handle_rest_apis<'a, Value: JsonLike<'a> + Clone>(
     app_ctx: Arc<AppContext<Value>>,
     req_counter: &mut RequestCounter,
 ) -> Result<Response<Body>> {
+    let app_ctx = &app_ctx;
     *request.uri_mut() = request.uri().path().replace(API_URL_PREFIX, "").parse()?;
-    let req_ctx = Arc::new(create_request_context(&request, app_ctx.as_ref()));
+    let req_ctx = Arc::new(create_request_context(&request, app_ctx.clone()));
     if let Some(p_request) = app_ctx.endpoints.matches(&request) {
         let http_route = format!("{API_URL_PREFIX}{}", p_request.path.as_str());
         req_counter.set_http_route(&http_route);
@@ -283,9 +284,9 @@ async fn handle_rest_apis<'a, Value: JsonLike<'a> + Clone>(
                 .data(req_ctx.clone())
                 .execute(&app_ctx.schema)
                 .await;
-            response = update_cache_control_header(response, app_ctx.as_ref(), req_ctx.clone());
+            response = update_cache_control_header(response, app_ctx.clone(), req_ctx.clone());
             let mut resp = response.into_rest_response()?;
-            update_response_headers(&mut resp, &req_ctx, &app_ctx);
+            update_response_headers(&mut resp, &req_ctx, app_ctx.clone());
             Ok(resp)
         }
         .instrument(span)
@@ -309,7 +310,7 @@ async fn handle_request_inner<'a, T: DeserializeOwned + GraphQLRequestLike, Valu
         // The first check for the route should be for `/graphql`
         // This is always going to be the most used route.
         hyper::Method::POST if req.uri().path() == "/graphql" => {
-            graphql_request::<T, Value>(req, &app_ctx, req_counter).await
+            graphql_request::<T, Value>(req, app_ctx, req_counter).await
         }
         hyper::Method::POST
             if app_ctx.blueprint.server.enable_showcase
@@ -321,7 +322,7 @@ async fn handle_request_inner<'a, T: DeserializeOwned + GraphQLRequestLike, Valu
                     Err(res) => return Ok(res),
                 };
 
-            graphql_request::<T, Value>(req, &Arc::new(app_ctx), req_counter).await
+            graphql_request::<T, Value>(req, Arc::new(app_ctx), req_counter).await
         }
 
         hyper::Method::GET => {

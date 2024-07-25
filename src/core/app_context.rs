@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_graphql::dynamic::{self, DynamicRequest};
 use async_graphql_value::ConstValue;
 use hyper::body::Bytes;
-
+use serde::Deserialize;
 use crate::core::async_graphql_hyper::OperationId;
 use crate::core::auth::context::GlobalAuthContext;
 use crate::core::blueprint::Type::ListType;
@@ -19,23 +19,24 @@ use crate::core::json::JsonLike;
 use crate::core::rest::{Checked, EndpointSet};
 use crate::core::runtime::TargetRuntime;
 
+#[derive(Clone)]
 pub struct AppContext<Value> {
     pub schema: dynamic::Schema,
-    pub runtime: TargetRuntime,
+    pub runtime: TargetRuntime<Value>,
     pub blueprint: Blueprint<Value>,
-    pub http_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, HttpDataLoader>>>,
-    pub gql_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, GraphqlDataLoader>>>,
-    pub grpc_data_loaders: Arc<Vec<DataLoader<grpc::DataLoaderRequest, GrpcDataLoader>>>,
+    pub http_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, HttpDataLoader<Value>>>>,
+    pub gql_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, GraphqlDataLoader<Value>>>>,
+    pub grpc_data_loaders: Arc<Vec<DataLoader<grpc::DataLoaderRequest, GrpcDataLoader<Value>>>>,
     pub endpoints: EndpointSet<Checked>,
     pub auth_ctx: Arc<GlobalAuthContext>,
     pub dedupe_handler: Arc<DedupeResult<IoId, ConstValue, Error>>,
-    pub dedupe_operation_handler: DedupeResult<OperationId, Response<Bytes>, Error>,
+    pub dedupe_operation_handler: Arc<DedupeResult<OperationId, Response<Bytes>, Error>>,
 }
 
-impl<'a, Value: JsonLike<'a> + Clone> AppContext<Value> {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> AppContext<Value> {
     pub fn new(
         mut blueprint: Blueprint<Value>,
-        runtime: TargetRuntime,
+        runtime: TargetRuntime<Value>,
         endpoints: EndpointSet<Checked>,
     ) -> Self {
         let mut http_data_loaders = vec![];
@@ -135,7 +136,7 @@ impl<'a, Value: JsonLike<'a> + Clone> AppContext<Value> {
             endpoints,
             auth_ctx: Arc::new(auth_ctx),
             dedupe_handler: Arc::new(DedupeResult::new(false)),
-            dedupe_operation_handler: DedupeResult::new(false),
+            dedupe_operation_handler: Arc::new(DedupeResult::new(false)),
         }
     }
 

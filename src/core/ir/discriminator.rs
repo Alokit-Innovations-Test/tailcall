@@ -6,8 +6,9 @@ use async_graphql::Value;
 use derive_more::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 use indenter::indented;
 use indexmap::IndexMap;
-
+use serde::Deserialize;
 use crate::core::config::Type;
+use crate::core::json::JsonLike;
 use crate::core::valid::{Cause, Valid, Validator};
 
 /// Represents the type name for the resolved value.
@@ -214,8 +215,8 @@ impl Discriminator {
         Valid::succeed(discriminator)
     }
 
-    pub fn resolve_type(&self, value: &Value) -> Result<TypeName> {
-        if let Value::List(list) = value {
+    pub fn resolve_type<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone>(&self, value: &Value) -> Result<TypeName> {
+        if let Some(list) = value.as_array() {
             let results: Result<Vec<_>> = list
                 .iter()
                 .map(|item| Ok(self.resolve_type_for_single(item)?.to_string()))
@@ -227,6 +228,18 @@ impl Discriminator {
                 self.resolve_type_for_single(value)?.to_string(),
             ))
         }
+/*        if let Value::List(list) = value {
+            let results: Result<Vec<_>> = list
+                .iter()
+                .map(|item| Ok(self.resolve_type_for_single(item)?.to_string()))
+                .collect();
+
+            Ok(TypeName::Vec(results?))
+        } else {
+            Ok(TypeName::Single(
+                self.resolve_type_for_single(value)?.to_string(),
+            ))
+        }*/
     }
 
     fn resolve_type_for_single(&self, value: &Value) -> Result<&str> {

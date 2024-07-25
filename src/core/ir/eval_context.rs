@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use async_graphql::ServerError;
 use reqwest::header::HeaderMap;
-
+use serde::Deserialize;
 use super::discriminator::TypeName;
 use super::{GraphQLOperationContext, RelatedFields, ResolverContextLike, SelectionField};
 use crate::core::document::print_directives;
@@ -15,7 +15,7 @@ use crate::core::json::{JsonLike, JsonObjectLike};
 #[derive(Clone)]
 pub struct EvalContext<'a, Ctx: ResolverContextLike, Value> {
     // Context create for each GraphQL Request
-    pub request_ctx: &'a RequestContext,
+    pub request_ctx: &'a RequestContext<Value>,
 
     // Async GraphQL Context
     // Contains current value and arguments
@@ -34,7 +34,7 @@ pub struct EvalContext<'a, Ctx: ResolverContextLike, Value> {
     pub type_name: Option<TypeName>,
 }
 
-impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> EvalContext<'a, Ctx, Value> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Deserialize<'a> + Clone> EvalContext<'a, Ctx, Value> {
     pub fn with_value(&mut self, value: Value) -> Self {
         let mut ctx = self.clone();
         ctx.graphql_ctx_value = Some(Arc::new(value));
@@ -51,7 +51,7 @@ impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Clone> EvalContext<'a, 
         self.graphql_ctx.is_query()
     }
 
-    pub fn new(req_ctx: &'a RequestContext, graphql_ctx: &'a Ctx) -> Self {
+    pub fn new(req_ctx: &'a RequestContext<Value>, graphql_ctx: &'a Ctx) -> Self {
         Self {
             request_ctx: req_ctx,
             graphql_ctx,

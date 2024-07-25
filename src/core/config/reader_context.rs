@@ -2,18 +2,19 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use headers::HeaderMap;
-
+use serde::Deserialize;
 use crate::core::has_headers::HasHeaders;
+use crate::core::json::JsonLike;
 use crate::core::path::PathString;
 use crate::core::runtime::TargetRuntime;
 
-pub struct ConfigReaderContext<'a> {
-    pub runtime: &'a TargetRuntime,
+pub struct ConfigReaderContext<'a, Value> {
+    pub runtime: &'a TargetRuntime<Value>,
     pub vars: &'a BTreeMap<String, String>,
     pub headers: HeaderMap,
 }
 
-impl<'a> PathString for ConfigReaderContext<'a> {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> PathString for ConfigReaderContext<'a, Value> {
     fn path_string<T: AsRef<str>>(&self, path: &[T]) -> Option<Cow<'_, str>> {
         if path.is_empty() {
             return None;
@@ -28,7 +29,7 @@ impl<'a> PathString for ConfigReaderContext<'a> {
     }
 }
 
-impl HasHeaders for ConfigReaderContext<'_> {
+impl<Value> HasHeaders for ConfigReaderContext<'_, Value> {
     fn headers(&self) -> &HeaderMap {
         &self.headers
     }

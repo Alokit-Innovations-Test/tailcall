@@ -6,7 +6,7 @@ use async_graphql_value::ConstValue;
 use cache_control::{Cachability, CacheControl};
 use derive_setters::Setters;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-
+use serde::Deserialize;
 use crate::core::app_context::AppContext;
 use crate::core::auth::context::AuthContext;
 use crate::core::blueprint::{Server, Upstream};
@@ -21,7 +21,7 @@ use crate::core::{error, grpc};
 use crate::core::json::JsonLike;
 
 #[derive(Setters)]
-pub struct RequestContext {
+pub struct RequestContext<Value> {
     pub server: Server,
     pub upstream: Upstream,
     pub x_response_headers: Arc<Mutex<HeaderMap>>,
@@ -30,18 +30,18 @@ pub struct RequestContext {
     // upstream.
     pub allowed_headers: HeaderMap,
     pub auth_ctx: AuthContext,
-    pub http_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, HttpDataLoader>>>,
-    pub gql_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, GraphqlDataLoader>>>,
-    pub grpc_data_loaders: Arc<Vec<DataLoader<grpc::DataLoaderRequest, GrpcDataLoader>>>,
+    pub http_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, HttpDataLoader<Value>>>>,
+    pub gql_data_loaders: Arc<Vec<DataLoader<DataLoaderRequest, GraphqlDataLoader<Value>>>>,
+    pub grpc_data_loaders: Arc<Vec<DataLoader<grpc::DataLoaderRequest, GrpcDataLoader<Value>>>>,
     pub min_max_age: Arc<Mutex<Option<i32>>>,
     pub cache_public: Arc<Mutex<Option<bool>>>,
-    pub runtime: TargetRuntime,
+    pub runtime: TargetRuntime<Value>,
     pub cache: DedupeResult<IoId, ConstValue, Error>,
     pub dedupe_handler: Arc<DedupeResult<IoId, ConstValue, Error>>,
 }
 
-impl RequestContext {
-    pub fn new(target_runtime: TargetRuntime) -> RequestContext {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> RequestContext<Value> {
+    pub fn new(target_runtime: TargetRuntime<Value>) -> RequestContext<Value> {
         RequestContext {
             server: Default::default(),
             upstream: Default::default(),
@@ -184,7 +184,7 @@ impl RequestContext {
     }
 }
 
-impl<'a, Value: JsonLike<'a> + Clone> From<&AppContext<Value>> for RequestContext {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> From<&AppContext<Value>> for RequestContext<Value> {
     fn from(app_ctx: &AppContext<Value>) -> Self {
         let cookie_headers = if app_ctx.blueprint.server.enable_set_cookie_header {
             Some(Arc::new(Mutex::new(HeaderMap::new())))
@@ -218,7 +218,7 @@ mod test {
     use crate::core::config::{self, Batch};
     use crate::core::http::RequestContext;
 
-    impl Default for RequestContext {
+    impl Default for RequestContext<async_graphql::Value> {
         fn default() -> Self {
             let config_module = crate::core::config::ConfigModule::default();
 
@@ -262,12 +262,12 @@ mod test {
 
     #[test]
     fn test_update_cache_visibility_public() {
-        let req_ctx: RequestContext = RequestContext::default();
+        let req_ctx: RequestContext<async_graphql::Value> = RequestContext::default();
         req_ctx.set_cache_visibility(&Some(Cachability::Public));
         assert_eq!(req_ctx.is_cache_public(), None);
     }
 
-    fn create_req_ctx_with_batch(batch: Batch) -> RequestContext {
+    fn create_req_ctx_with_batch(batch: Batch) -> RequestContext<async_graphql::Value> {
         let config_module = config::ConfigModule::default();
         let mut upstream = Upstream::try_from(&config_module).unwrap();
         let server = Server::try_from(config_module).unwrap();

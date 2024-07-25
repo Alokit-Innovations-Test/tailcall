@@ -5,26 +5,27 @@ use std::time::Duration;
 
 use async_graphql::async_trait;
 use async_graphql::futures_util::future::join_all;
-
+use serde::Deserialize;
 use crate::core::config::Batch;
 use crate::core::data_loader::{DataLoader, Loader};
 use crate::core::http::{DataLoaderRequest, Response};
+use crate::core::json::JsonLike;
 use crate::core::runtime::TargetRuntime;
 
-pub struct GraphqlDataLoader {
-    pub runtime: TargetRuntime,
+pub struct GraphqlDataLoader<Value> {
+    pub runtime: TargetRuntime<Value>,
     pub batch: bool,
 }
 
-impl GraphqlDataLoader {
-    pub fn new(runtime: TargetRuntime, batch: bool) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> GraphqlDataLoader<Value> {
+    pub fn new(runtime: TargetRuntime<Value>, batch: bool) -> Self {
         GraphqlDataLoader { runtime, batch }
     }
 
     pub fn into_data_loader(
         self,
         batch: Batch,
-    ) -> DataLoader<DataLoaderRequest, GraphqlDataLoader> {
+    ) -> DataLoader<DataLoaderRequest, GraphqlDataLoader<Value>> {
         DataLoader::new(self)
             .delay(Duration::from_millis(batch.delay as u64))
             .max_batch_size(batch.max_size.unwrap_or_default())
@@ -32,7 +33,7 @@ impl GraphqlDataLoader {
 }
 
 #[async_trait::async_trait]
-impl Loader<DataLoaderRequest> for GraphqlDataLoader {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Loader<DataLoaderRequest> for GraphqlDataLoader<Value> {
     type Value = Response<async_graphql::Value>;
     type Error = Arc<anyhow::Error>;
 

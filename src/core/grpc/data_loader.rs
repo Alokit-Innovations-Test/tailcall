@@ -6,7 +6,7 @@ use anyhow::Result;
 use async_graphql::async_trait;
 use async_graphql::futures_util::future::join_all;
 use async_graphql_value::ConstValue;
-
+use serde::Deserialize;
 use super::data_loader_request::DataLoaderRequest;
 use super::protobuf::ProtobufOperation;
 use super::request::execute_grpc_request;
@@ -19,14 +19,14 @@ use crate::core::json::JsonLike;
 use crate::core::runtime::TargetRuntime;
 
 #[derive(Clone)]
-pub struct GrpcDataLoader {
-    pub(crate) runtime: TargetRuntime,
+pub struct GrpcDataLoader<Value> {
+    pub(crate) runtime: TargetRuntime<Value>,
     pub(crate) operation: ProtobufOperation,
     pub(crate) group_by: Option<GroupBy>,
 }
 
-impl GrpcDataLoader {
-    pub fn into_data_loader(self, batch: Batch) -> DataLoader<DataLoaderRequest, GrpcDataLoader> {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> GrpcDataLoader<Value> {
+    pub fn into_data_loader(self, batch: Batch) -> DataLoader<DataLoaderRequest, GrpcDataLoader<Value>> {
         DataLoader::new(self)
             .delay(Duration::from_millis(batch.delay as u64))
             .max_batch_size(batch.max_size.unwrap_or_default())
@@ -99,7 +99,7 @@ impl GrpcDataLoader {
 }
 
 #[async_trait::async_trait]
-impl Loader<DataLoaderRequest> for GrpcDataLoader {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Loader<DataLoaderRequest> for GrpcDataLoader<Value> {
     type Value = Response<async_graphql::Value>;
     type Error = Arc<anyhow::Error>;
 

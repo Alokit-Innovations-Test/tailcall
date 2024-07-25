@@ -5,10 +5,12 @@ use rustls_pemfile;
 use rustls_pki_types::{
     CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer, PrivateSec1KeyDer,
 };
+use serde::Deserialize;
 use url::Url;
 
 use super::{ConfigModule, Content, Link, LinkType};
 use crate::core::config::{Config, ConfigReaderContext, Source};
+use crate::core::json::JsonLike;
 use crate::core::merge_right::MergeRight;
 use crate::core::proto_reader::ProtoReader;
 use crate::core::resource_reader::{Cached, Resource, ResourceReader};
@@ -17,14 +19,14 @@ use crate::core::runtime::TargetRuntime;
 
 /// Reads the configuration from a file or from an HTTP URL and resolves all
 /// linked extensions to create a ConfigModule.
-pub struct ConfigReader {
-    runtime: TargetRuntime,
+pub struct ConfigReader<Value> {
+    runtime: TargetRuntime<Value>,
     resource_reader: ResourceReader<Cached>,
     proto_reader: ProtoReader,
 }
 
-impl ConfigReader {
-    pub fn init(runtime: TargetRuntime) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> ConfigReader<Value> {
+    pub fn init(runtime: TargetRuntime<Value>) -> Self {
         let resource_reader = ResourceReader::<Cached>::cached(runtime.clone());
         Self {
             runtime: runtime.clone(),

@@ -1,6 +1,6 @@
 use std::future::Future;
 use std::ops::Deref;
-
+use serde::Deserialize;
 use super::eval_io::eval_io;
 use super::model::{Cache, CacheKey, Map, IR};
 use super::{Error, EvalContext, ResolverContextLike};
@@ -13,7 +13,7 @@ use crate::core::serde_value_ext::ValueExt;
 pub trait Captures<T: ?Sized> {}
 impl<T: ?Sized, U: ?Sized> Captures<T> for U {}
 
-impl<'a, Value: JsonLike<'a> + Clone> IR<Value> {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> IR<Value> {
     #[tracing::instrument(skip_all, fields(otel.name = %self), err)]
     pub fn eval<'b, Ctx>(
         &'a self,
@@ -32,8 +32,8 @@ impl<'a, Value: JsonLike<'a> + Clone> IR<Value> {
                     let inp = input.eval(ctx).await?;
                     Ok(inp
                         .get_path(path)
-                        .unwrap_or(&Value::null())
-                        .clone())
+                        .cloned()
+                        .unwrap_or(Value::null()))
                 }
                 IR::Dynamic(value) => Ok(value.render_value(ctx)),
                 IR::Protect(expr) => {

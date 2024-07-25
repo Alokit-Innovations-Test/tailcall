@@ -25,7 +25,7 @@ use crate::core::{grpc, http, WorkerIO};
 /// all of that.
 pub struct EvalHttp<'a, 'ctx, Context: ResolverContextLike + Sync, Value> {
     evaluation_ctx: &'ctx EvalContext<'a, Context, Value>,
-    data_loader: Option<&'a DataLoader<DataLoaderRequest, HttpDataLoader>>,
+    data_loader: Option<&'a DataLoader<DataLoaderRequest, HttpDataLoader<Value>>>,
     request_template: &'a http::RequestTemplate,
 }
 

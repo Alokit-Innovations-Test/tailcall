@@ -1,17 +1,16 @@
 use std::sync::Arc;
-
-use async_graphql_value::ConstValue;
-
+use serde::Deserialize;
 use super::ir::model::IoId;
 use crate::core::schema_extension::SchemaExtension;
 use crate::core::worker::{Command, Event};
 use crate::core::{Cache, EnvIO, FileIO, HttpIO, WorkerIO};
+use crate::core::json::JsonLike;
 
 /// The TargetRuntime struct unifies the available runtime-specific
 /// IO implementations. This is used to reduce piping IO structs all
 /// over the codebase.
 #[derive(Clone)]
-pub struct TargetRuntime {
+pub struct TargetRuntime<Value> {
     /// HTTP client for making standard HTTP requests.
     pub http: Arc<dyn HttpIO>,
     /// HTTP client optimized for HTTP/2 requests.
@@ -24,17 +23,17 @@ pub struct TargetRuntime {
     pub file: Arc<dyn FileIO>,
     /// Cache for storing and retrieving entity data, improving performance and
     /// reducing external calls.
-    pub cache: Arc<dyn Cache<Key = IoId, Value = ConstValue>>,
+    pub cache: Arc<dyn Cache<Key = IoId, Value = Value>>,
     /// A list of extensions that can be used to extend the runtime's
     /// functionality or integrate additional features.
     pub extensions: Arc<Vec<SchemaExtension>>,
     /// Worker middleware for handling HTTP requests.
     pub cmd_worker: Option<Arc<dyn WorkerIO<Event, Command>>>,
     /// Worker middleware for resolving data.
-    pub worker: Option<Arc<dyn WorkerIO<ConstValue, ConstValue>>>,
+    pub worker: Option<Arc<dyn WorkerIO<Value, Value>>>,
 }
 
-impl TargetRuntime {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> TargetRuntime<Value> {
     pub fn add_extensions(&mut self, extensions: Vec<SchemaExtension>) {
         self.extensions = Arc::new(extensions);
     }
@@ -173,7 +172,7 @@ pub mod test {
         }
     }
 
-    pub fn init(script: Option<blueprint::Script>) -> TargetRuntime {
+    pub fn init(script: Option<blueprint::Script>) -> TargetRuntime<Value> {
         let http = TestHttp::init(&Default::default());
         let http2 = TestHttp::init(&Upstream::default().http2_only(true));
 
