@@ -1,5 +1,5 @@
 use async_graphql_value::ConstValue;
-
+use serde::Deserialize;
 use super::eval_http::{
     execute_grpc_request_with_dl, execute_raw_grpc_request, execute_raw_request,
     execute_request_with_dl, parse_graphql_response, set_headers, EvalHttp,
@@ -13,8 +13,9 @@ use crate::core::grpc;
 use crate::core::grpc::data_loader::GrpcDataLoader;
 use crate::core::http::DataLoaderRequest;
 use crate::core::ir::Error;
+use crate::core::json::JsonLike;
 
-pub async fn eval_io<Ctx>(io: &IO, ctx: &mut EvalContext<'_, Ctx>) -> Result<ConstValue, Error>
+pub async fn eval_io<'a, Ctx, Value: JsonLike<'a> + Deserialize<'a> + Clone>(io: &'a IO, ctx: &mut EvalContext<'a, Ctx, Value>) -> Result<Value, Error>
 where
     Ctx: ResolverContextLike + Sync,
 {
@@ -38,7 +39,7 @@ where
     }
 }
 
-async fn eval_io_inner<Ctx>(io: &IO, ctx: &mut EvalContext<'_, Ctx>) -> Result<ConstValue, Error>
+async fn eval_io_inner<'a, Ctx, Value: JsonLike<'a> + Deserialize<'a> + Clone>(io: &'a IO, ctx: &mut EvalContext<'a, Ctx, Value>) -> Result<ConstValue, Error>
 where
     Ctx: ResolverContextLike + Sync,
 {

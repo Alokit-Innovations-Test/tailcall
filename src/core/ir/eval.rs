@@ -1,8 +1,7 @@
 use std::future::Future;
 use std::ops::Deref;
 
-use async_graphql_value::ConstValue;
-
+use serde::Deserialize;
 use super::eval_io::eval_io;
 use super::model::{Cache, CacheKey, Map, IR};
 use super::{Error, EvalContext, ResolverContextLike};
@@ -17,10 +16,10 @@ impl<T: ?Sized, U: ?Sized> Captures<T> for U {}
 
 impl IR {
     #[tracing::instrument(skip_all, fields(otel.name = %self), err)]
-    pub fn eval<'a, 'b, Ctx>(
+    pub fn eval<'a, 'b, Ctx, Value: JsonLike<'a> + Deserialize<'a> + Clone>(
         &'a self,
-        ctx: &'b mut EvalContext<'a, Ctx>,
-    ) -> impl Future<Output = Result<ConstValue, Error>> + Send + Captures<&'b &'a ()>
+        ctx: &'b mut EvalContext<'a, Ctx, Value>,
+    ) -> impl Future<Output = Result<Value, Error>> + Send + Captures<&'b &'a ()>
     where
         Ctx: ResolverContextLike + Sync,
     {
@@ -29,12 +28,12 @@ impl IR {
                 IR::ContextPath(path) => Ok(ctx
                     .path_value(path)
                     .map(|a| a.into_owned())
-                    .unwrap_or(async_graphql::Value::Null)),
+                    .unwrap_or(async_graphql_value::ConstValue::Null)),
                 IR::Path(input, path) => {
                     let inp = input.eval(ctx).await?;
                     Ok(inp
                         .get_path(path)
-                        .unwrap_or(&async_graphql::Value::Null)
+                        .unwrap_or(&async_graphql_value::ConstValue::Null)
                         .clone())
                 }
                 IR::Dynamic(value) => Ok(value.render_value(ctx)),
@@ -68,9 +67,9 @@ impl IR {
                 }
                 IR::Map(Map { input, map }) => {
                     let value = input.eval(ctx).await?;
-                    if let ConstValue::String(key) = value {
+                    if let Value::string(key) = value {
                         if let Some(value) = map.get(&key) {
-                            Ok(ConstValue::String(value.to_owned()))
+                            Ok(Value::string(value))
                         } else {
                             Err(Error::ExprEvalError(format!(
                                 "Can't find mapped key: {}.",

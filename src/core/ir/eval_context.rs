@@ -2,17 +2,19 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use async_graphql::{ServerError, Value};
+use async_graphql::ServerError;
+use async_graphql_value::ConstValue;
 use reqwest::header::HeaderMap;
-
+use serde::Deserialize;
 use super::discriminator::TypeName;
 use super::{GraphQLOperationContext, RelatedFields, ResolverContextLike, SelectionField};
 use crate::core::document::print_directives;
 use crate::core::http::RequestContext;
+use crate::core::json::JsonLike;
 
 // TODO: rename to ResolverContext
 #[derive(Clone)]
-pub struct EvalContext<'a, Ctx: ResolverContextLike> {
+pub struct EvalContext<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Deserialize<'a> + Clone> {
     // Context create for each GraphQL Request
     pub request_ctx: &'a RequestContext,
 
@@ -33,14 +35,14 @@ pub struct EvalContext<'a, Ctx: ResolverContextLike> {
     pub type_name: Option<TypeName>,
 }
 
-impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
-    pub fn with_value(&mut self, value: Value) -> EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Deserialize<'a> + Clone> EvalContext<'a, Ctx, Value> {
+    pub fn with_value(&mut self, value: Value) -> EvalContext<'a, Ctx, Value> {
         let mut ctx = self.clone();
         ctx.graphql_ctx_value = Some(Arc::new(value));
         ctx
     }
 
-    pub fn with_args(&self, args: Value) -> EvalContext<'a, Ctx> {
+    pub fn with_args(&self, args: Value) -> EvalContext<'a, Ctx, Value> {
         let mut ctx = self.clone();
         ctx.graphql_ctx_args = Some(Arc::new(args));
         ctx
@@ -50,7 +52,7 @@ impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
         self.graphql_ctx.is_query()
     }
 
-    pub fn new(req_ctx: &'a RequestContext, graphql_ctx: &'a Ctx) -> EvalContext<'a, Ctx> {
+    pub fn new(req_ctx: &'a RequestContext, graphql_ctx: &'a Ctx) -> EvalContext<'a, Ctx, Value> {
         Self {
             request_ctx: req_ctx,
             graphql_ctx,
@@ -67,14 +69,14 @@ impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
     pub fn path_arg<T: AsRef<str>>(&self, path: &[T]) -> Option<Cow<'a, Value>> {
         // TODO: add unit tests for this
         if let Some(args) = self.graphql_ctx_args.as_ref() {
-            get_path_value(args.as_ref(), path).map(|a| Cow::Owned(a.clone()))
+            args.get_path(path).map(|a| Cow::Owned(a.clone()))
         } else if path.is_empty() {
             self.graphql_ctx
                 .args()
-                .map(|a| Cow::Owned(Value::Object(a.clone())))
+                .map(|a| Cow::Owned(Value::object(a.clone())))
         } else {
             let arg = self.graphql_ctx.args()?.get(path[0].as_ref())?;
-            get_path_value(arg, &path[1..]).map(Cow::Borrowed)
+            arg.get_path(&path[1..]).map(Cow::Borrowed)
         }
     }
 
@@ -120,7 +122,7 @@ impl<'a, Ctx: ResolverContextLike> EvalContext<'a, Ctx> {
     }
 }
 
-impl<'a, Ctx: ResolverContextLike> GraphQLOperationContext for EvalContext<'a, Ctx> {
+impl<'a, Ctx: ResolverContextLike, Value: JsonLike<'a> + Deserialize<'a> + Clone> GraphQLOperationContext for EvalContext<'a, Ctx, Value> {
     fn directives(&self) -> Option<String> {
         let selection_field = self.graphql_ctx.field()?;
         selection_field
@@ -136,7 +138,7 @@ impl<'a, Ctx: ResolverContextLike> GraphQLOperationContext for EvalContext<'a, C
 }
 
 fn format_selection_set<'a>(
-    selection_set: impl Iterator<Item = &'a SelectionField>,
+    selection_set: impl Iterator<Item=&'a SelectionField>,
     related_fields: &RelatedFields,
 ) -> Option<String> {
     let set = selection_set
@@ -196,15 +198,15 @@ fn format_selection_field_arguments(field: &SelectionField) -> Cow<'static, str>
 }
 
 // TODO: this is the same code as src/json/json_like.rs::get_path
-pub fn get_path_value<'a, T: AsRef<str>>(input: &'a Value, path: &[T]) -> Option<&'a Value> {
+pub fn get_path_value<'a, T: AsRef<str>, Value: JsonLike<'a> + Deserialize<'a> + Clone>(input: &'a Value, path: &[T]) -> Option<&'a Value> {
     let mut value = Some(input);
     for name in path {
         match value {
-            Some(Value::Object(map)) => {
+            Some(ConstValue::Object(map)) => {
                 value = map.get(name.as_ref());
             }
 
-            Some(Value::List(list)) => {
+            Some(ConstValue::List(list)) => {
                 value = list.get(name.as_ref().parse::<usize>().ok()?);
             }
             _ => return None,
