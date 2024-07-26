@@ -93,8 +93,8 @@ fn main_config() -> Config {
     }
 }
 
-async fn create_main(
-    runtime: TargetRuntime,
+async fn create_main<Value>(
+    runtime: TargetRuntime<Value>,
     folder_path: impl AsRef<Path>,
     source: Source,
 ) -> Result<()> {

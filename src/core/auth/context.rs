@@ -21,7 +21,7 @@ impl GlobalAuthContext {
     // graphql way with additional info. But this actually requires rewrites to
     // expression to work with that type since otherwise any additional info
     // will be lost during conversion to anyhow::Error
-    async fn validate(&self, request: &RequestContext) -> Verification {
+    async fn validate<Value>(&self, request: &RequestContext<Value>) -> Verification {
         if let Some(verifier) = self.verifier.as_ref() {
             verifier.verify(request).await
         } else {
@@ -37,7 +37,7 @@ impl GlobalAuthContext {
 }
 
 impl AuthContext {
-    pub async fn validate(&self, request: &RequestContext) -> Verification {
+    pub async fn validate<Value>(&self, request: &RequestContext<Value>) -> Verification {
         if let Some(result) = self.auth_result.read().unwrap().as_ref() {
             return result.clone();
         }

@@ -24,7 +24,7 @@ pub struct ProtoMetadata {
 
 impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> ProtoReader<Value> {
     /// Initializes the proto reader with a resource reader and target runtime
-    pub fn init(reader: ResourceReader<Cached>, runtime: TargetRuntime<Value>) -> Self {
+    pub fn init(reader: ResourceReader<Cached<Value>>, runtime: TargetRuntime<Value>) -> Self {
         Self { reader, runtime }
     }
 
