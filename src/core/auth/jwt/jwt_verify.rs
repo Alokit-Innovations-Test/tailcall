@@ -38,7 +38,7 @@ impl JwtVerifier {
         }
     }
 
-    fn resolve_token(&self, request: &RequestContext) -> anyhow::Result<Option<String>> {
+    fn resolve_token<Value>(&self, request: &RequestContext<Value>) -> anyhow::Result<Option<String>> {
         let value = request
             .allowed_headers
             .typed_try_get::<Authorization<Bearer>>()?;
@@ -64,8 +64,8 @@ impl JwtVerifier {
 }
 
 #[async_trait::async_trait]
-impl Verify for JwtVerifier {
-    async fn verify(&self, request: &RequestContext) -> Verification {
+impl<Value> Verify<Value> for JwtVerifier {
+    async fn verify(&self, request: &RequestContext<Value>) -> Verification {
         let token = self.resolve_token(request);
         let Ok(token) = token else {
             return Verification::fail(Error::Invalid);
@@ -163,7 +163,7 @@ pub mod tests {
         }
     }
 
-    pub fn create_jwt_auth_request(token: &str) -> RequestContext {
+    pub fn create_jwt_auth_request<Value>(token: &str) -> RequestContext<Value> {
         let mut req_context = RequestContext::default();
 
         req_context

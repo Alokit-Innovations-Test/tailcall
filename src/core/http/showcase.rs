@@ -16,7 +16,7 @@ use crate::core::runtime::TargetRuntime;
 
 pub async fn create_app_ctx<'a, T: DeserializeOwned + GraphQLRequestLike, Value: JsonLike<'a> + Clone>(
     req: &Request<Body>,
-    runtime: TargetRuntime,
+    runtime: TargetRuntime<Value>,
     enable_fs: bool,
 ) -> Result<Result<AppContext<Value>, Response<Body>>> {
     let config_url = req

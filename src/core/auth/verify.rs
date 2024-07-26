@@ -7,8 +7,8 @@ use crate::core::blueprint;
 use crate::core::http::RequestContext;
 
 #[async_trait::async_trait]
-pub(crate) trait Verify {
-    async fn verify(&self, req_ctx: &RequestContext) -> Verification;
+pub(crate) trait Verify<Value> {
+    async fn verify(&self, req_ctx: &RequestContext<Value>) -> Verification;
 }
 
 pub enum Verifier {
@@ -46,8 +46,8 @@ impl From<blueprint::Auth> for AuthVerifier {
 }
 
 #[async_trait::async_trait]
-impl Verify for Verifier {
-    async fn verify(&self, req_ctx: &RequestContext) -> Verification {
+impl<Value> Verify<Value> for Verifier {
+    async fn verify(&self, req_ctx: &RequestContext<Value>) -> Verification {
         match self {
             Verifier::Basic(basic) => basic.verify(req_ctx).await,
             Verifier::Jwt(jwt) => jwt.verify(req_ctx).await,
@@ -56,8 +56,8 @@ impl Verify for Verifier {
 }
 
 #[async_trait::async_trait]
-impl Verify for AuthVerifier {
-    async fn verify(&self, req_ctx: &RequestContext) -> Verification {
+impl<Value> Verify<Value> for AuthVerifier {
+    async fn verify(&self, req_ctx: &RequestContext<Value>) -> Verification {
         match self {
             AuthVerifier::Single(verifier) => verifier.verify(req_ctx).await,
             AuthVerifier::And(left, right) => {
@@ -136,7 +136,7 @@ mod tests {
     // Helper Functions
     async fn verify_and_assert(
         verifier: &AuthVerifier,
-        req_ctx: &RequestContext,
+        req_ctx: &RequestContext<async_graphql::Value>,
         expected: Verification,
     ) {
         assert_eq!(verifier.verify(req_ctx).await, expected);

@@ -3,8 +3,9 @@ use std::sync::{Arc, Mutex};
 
 use futures_util::future::join_all;
 use futures_util::TryFutureExt;
+use serde::Deserialize;
 use url::Url;
-
+use crate::core::json::JsonLike;
 use crate::core::runtime::TargetRuntime;
 
 /// Response of a file read operation
@@ -70,8 +71,8 @@ impl<A: Reader + Send + Sync> ResourceReader<A> {
     }
 }
 
-impl ResourceReader<Cached> {
-    pub fn cached(runtime: TargetRuntime) -> Self {
+impl<Value> ResourceReader<Cached<Value>> {
+    pub fn cached(runtime: TargetRuntime<Value>) -> Self {
         ResourceReader(Cached::init(runtime))
     }
 }
@@ -87,18 +88,18 @@ impl std::fmt::Display for Resource {
 
 /// Reads the files directly from the filesystem or from an HTTP URL
 #[derive(Clone)]
-pub struct Direct {
-    runtime: TargetRuntime,
+pub struct Direct<Value> {
+    runtime: TargetRuntime<Value>,
 }
 
-impl Direct {
-    pub fn init(runtime: TargetRuntime) -> Self {
+impl<Value> Direct<Value> {
+    pub fn init(runtime: TargetRuntime<Value>) -> Self {
         Self { runtime }
     }
 }
 
 #[async_trait::async_trait]
-impl Reader for Direct {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Reader for Direct<Value> {
     /// Reads a file from the filesystem or from an HTTP URL
     async fn read<T: Into<Resource> + Send>(&self, file: T) -> anyhow::Result<FileRead> {
         let content = match file.into() {
@@ -139,20 +140,20 @@ impl Reader for Direct {
 
 /// Reads the files from the filesystem or from an HTTP URL with cache
 #[derive(Clone)]
-pub struct Cached {
-    direct: Direct,
+pub struct Cached<Value> {
+    direct: Direct<Value>,
     // Cache file content, path -> content
     cache: Arc<Mutex<HashMap<String, String>>>,
 }
 
-impl Cached {
-    pub fn init(runtime: TargetRuntime) -> Self {
+impl<Value> Cached<Value> {
+    pub fn init(runtime: TargetRuntime<Value>) -> Self {
         Self { direct: Direct::init(runtime), cache: Default::default() }
     }
 }
 
 #[async_trait::async_trait]
-impl Reader for Cached {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Reader for Cached<Value> {
     /// Reads a file from the filesystem or from an HTTP URL with cache
     async fn read<T: Into<Resource> + Send>(&self, file: T) -> anyhow::Result<FileRead> {
         // check cache

@@ -21,13 +21,13 @@ use crate::core::runtime::TargetRuntime;
 /// linked extensions to create a ConfigModule.
 pub struct ConfigReader<Value> {
     runtime: TargetRuntime<Value>,
-    resource_reader: ResourceReader<Cached>,
-    proto_reader: ProtoReader,
+    resource_reader: ResourceReader<Cached<Value>>,
+    proto_reader: ProtoReader<Value>,
 }
 
 impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> ConfigReader<Value> {
     pub fn init(runtime: TargetRuntime<Value>) -> Self {
-        let resource_reader = ResourceReader::<Cached>::cached(runtime.clone());
+        let resource_reader = ResourceReader::<Cached<Value>>::cached(runtime.clone());
         Self {
             runtime: runtime.clone(),
             resource_reader: resource_reader.clone(),

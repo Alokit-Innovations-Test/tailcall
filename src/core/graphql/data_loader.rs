@@ -33,7 +33,7 @@ impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> GraphqlDataLoader<Value>
 }
 
 #[async_trait::async_trait]
-impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Loader<DataLoaderRequest> for GraphqlDataLoader<Value> {
+impl Loader<DataLoaderRequest> for GraphqlDataLoader<async_graphql::Value> {
     type Value = Response<async_graphql::Value>;
     type Error = Arc<anyhow::Error>;
 

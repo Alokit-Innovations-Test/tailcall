@@ -1,22 +1,23 @@
 use anyhow::Result;
-
+use serde::Deserialize;
 use super::helpers::{display_schema, log_endpoint_set};
 use crate::cli::fmt::Fmt;
 use crate::cli::CLIError;
 use crate::core::blueprint::Blueprint;
 use crate::core::config::reader::ConfigReader;
 use crate::core::config::Source;
+use crate::core::json::JsonLike;
 use crate::core::runtime::TargetRuntime;
 
-pub(super) struct CheckParams {
+pub(super) struct CheckParams<Value> {
     pub(super) file_paths: Vec<String>,
     pub(super) n_plus_one_queries: bool,
     pub(super) schema: bool,
     pub(super) format: Option<Source>,
-    pub(super) runtime: TargetRuntime,
+    pub(super) runtime: TargetRuntime<Value>,
 }
 
-pub(super) async fn check_command(params: CheckParams, config_reader: &ConfigReader) -> Result<()> {
+pub(super) async fn check_command<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone>(params: CheckParams<Value>, config_reader: &ConfigReader<Value>) -> Result<()> {
     let CheckParams { file_paths, n_plus_one_queries, schema, format, runtime } = params;
 
     let config_module = (config_reader.read_all(&file_paths)).await?;

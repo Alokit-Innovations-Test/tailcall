@@ -5,12 +5,13 @@ use hyper::header::{HeaderName, HeaderValue};
 use hyper::HeaderMap;
 use inquire::Confirm;
 use pathdiff::diff_paths;
-
+use serde::Deserialize;
 use super::config::{Config, Resolved, Source};
 use super::source::ConfigSource;
 use crate::core::config::transformer::Preset;
 use crate::core::config::{self, ConfigModule, ConfigReaderContext};
 use crate::core::generator::{Generator as ConfigGenerator, Input};
+use crate::core::json::JsonLike;
 use crate::core::proto_reader::ProtoReader;
 use crate::core::resource_reader::{Resource, ResourceReader};
 use crate::core::runtime::TargetRuntime;
@@ -18,14 +19,14 @@ use crate::core::valid::{ValidateInto, Validator};
 
 /// CLI that reads the the config file and generates the required tailcall
 /// configuration.
-pub struct Generator {
+pub struct Generator<Value> {
     /// path of config file.
     config_path: String,
-    runtime: TargetRuntime,
+    runtime: TargetRuntime<Value>,
 }
 
-impl Generator {
-    pub fn new(config_path: &str, runtime: TargetRuntime) -> Self {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Generator<Value> {
+    pub fn new(config_path: &str, runtime: TargetRuntime<Value>) -> Self {
         Self { config_path: config_path.to_string(), runtime }
     }
 

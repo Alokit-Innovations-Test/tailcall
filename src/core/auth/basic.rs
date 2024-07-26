@@ -13,9 +13,9 @@ pub struct BasicVerifier {
 }
 
 #[async_trait::async_trait]
-impl Verify for BasicVerifier {
+impl<Value> Verify<Value> for BasicVerifier {
     /// Verify the request context against the basic auth provider.
-    async fn verify(&self, req_ctx: &RequestContext) -> Verification {
+    async fn verify(&self, req_ctx: &RequestContext<Value>) -> Verification {
         let header = req_ctx
             .allowed_headers
             .typed_try_get::<Authorization<Basic>>();
@@ -62,7 +62,7 @@ testuser3:{SHA}Y2fEjdGT1W6nsLqtJbGUVeUp9e4=
         }
     }
 
-    pub fn create_basic_auth_request(username: &str, password: &str) -> RequestContext {
+    pub fn create_basic_auth_request(username: &str, password: &str) -> RequestContext<async_graphql::Value> {
         let mut req_context = RequestContext::default();
 
         req_context

@@ -5,14 +5,15 @@ use anyhow::Context;
 use futures_util::future::join_all;
 use prost_reflect::prost_types::{FileDescriptorProto, FileDescriptorSet};
 use protox::file::{FileResolver, GoogleFileResolver};
-
+use serde::Deserialize;
+use crate::core::json::JsonLike;
 use crate::core::proto_reader::fetch::GrpcReflection;
 use crate::core::resource_reader::{Cached, ResourceReader};
 use crate::core::runtime::TargetRuntime;
 
-pub struct ProtoReader {
-    reader: ResourceReader<Cached>,
-    runtime: TargetRuntime,
+pub struct ProtoReader<Value> {
+    reader: ResourceReader<Cached<Value>>,
+    runtime: TargetRuntime<Value>,
 }
 
 #[derive(Clone)]
@@ -21,9 +22,9 @@ pub struct ProtoMetadata {
     pub path: String,
 }
 
-impl ProtoReader {
+impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> ProtoReader<Value> {
     /// Initializes the proto reader with a resource reader and target runtime
-    pub fn init(reader: ResourceReader<Cached>, runtime: TargetRuntime) -> Self {
+    pub fn init(reader: ResourceReader<Cached>, runtime: TargetRuntime<Value>) -> Self {
         Self { reader, runtime }
     }
 

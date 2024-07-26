@@ -55,7 +55,7 @@ fn not_found() -> Result<Response<Body>> {
         .body(Body::empty())?)
 }
 
-fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, app_ctx: Arc<AppContext<Value>>) -> RequestContext {
+fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, app_ctx: Arc<AppContext<Value>>) -> RequestContext<Value> {
     let upstream = app_ctx.blueprint.upstream.clone();
     let allowed = upstream.allowed_headers;
     let allowed_headers = create_allowed_headers(req.headers(), &allowed);
@@ -67,7 +67,7 @@ fn create_request_context<'a, Value: JsonLike<'a> + Clone>(req: &Request<Body>, 
 fn update_cache_control_header<'a, Value: JsonLike<'a> + Clone>(
     response: GraphQLResponse,
     app_ctx: Arc<AppContext<Value>>,
-    req_ctx: Arc<RequestContext>,
+    req_ctx: Arc<RequestContext<Value>>,
 ) -> GraphQLResponse {
     if app_ctx.blueprint.server.enable_cache_control_header {
         let ttl = req_ctx.get_min_max_age().unwrap_or(0);
@@ -79,7 +79,7 @@ fn update_cache_control_header<'a, Value: JsonLike<'a> + Clone>(
 
 pub fn update_response_headers<'a, Value: JsonLike<'a> + Clone>(
     resp: &mut hyper::Response<hyper::Body>,
-    req_ctx: &RequestContext,
+    req_ctx: &RequestContext<Value>,
     app_ctx: Arc<AppContext<Value>>,
 ) {
     if !app_ctx.blueprint.server.response_headers.is_empty() {
@@ -145,7 +145,7 @@ pub async fn graphql_request<'a, T: DeserializeOwned + GraphQLRequestLike, Value
 
 async fn execute_query<'a, T: DeserializeOwned + GraphQLRequestLike, Value: JsonLike<'a> + Clone>(
     app_ctx: Arc<AppContext<Value>>,
-    req_ctx: &Arc<RequestContext>,
+    req_ctx: &Arc<RequestContext<Value>>,
     request: T,
 ) -> anyhow::Result<Response<Body>> {
     let mut response = if app_ctx.blueprint.server.enable_jit {

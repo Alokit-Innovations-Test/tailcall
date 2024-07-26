@@ -49,8 +49,8 @@ fn default_graphqlrc() -> serde_yaml::Value {
     )]))
 }
 
-async fn confirm_and_write_yml(
-    runtime: TargetRuntime,
+async fn confirm_and_write_yml<Value>(
+    runtime: TargetRuntime<Value>,
     yml_file_path: impl AsRef<Path>,
 ) -> Result<()> {
     let yml_file_path = yml_file_path.as_ref().display().to_string();

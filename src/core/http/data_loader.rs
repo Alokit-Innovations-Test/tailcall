@@ -58,7 +58,7 @@ impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> HttpDataLoader<Value> {
 }
 
 #[async_trait::async_trait]
-impl<'a, Value: JsonLike<'a> + Deserialize<'a> + Clone> Loader<DataLoaderRequest> for HttpDataLoader<Value> {
+impl Loader<DataLoaderRequest> for HttpDataLoader<async_graphql::Value> {
     type Value = Response<async_graphql::Value>;
     type Error = Arc<anyhow::Error>;
 
