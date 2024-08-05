@@ -12,8 +12,7 @@ use crate::core::valid::{Valid, Validator};
 // }
 
 fn compile_extension(
-    // TODO: convert this value to generic
-    extension: &config::Extension<serde_json::Value>,
+    extension: &config::Extension,
     config_module: &ConfigModule,
 ) -> Valid<IR, String> {
     Valid::from_option(

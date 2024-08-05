@@ -38,11 +38,11 @@ pub struct Map {
 }
 
 #[derive(Clone)]
-pub struct Rust<Value> {
+pub struct Rust {
     pub lib: Arc<libloading::Library>,
-    pub extension: Extension<Value>,
+    pub extension: Extension,
 }
-impl<Value> Debug for Rust<Value> {
+impl Debug for Rust {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Rust")
             .field("struct_", &"...".to_string())
@@ -50,7 +50,7 @@ impl<Value> Debug for Rust<Value> {
             .finish()
     }
 }
-impl<Value> Rust<Value> {
+impl Rust {
     // TODO: impl init, prep and process
     // maybe we can statically init struct in the dependency provided by TC
 
@@ -84,7 +84,7 @@ pub enum IO {
         name: String,
     },
     Rust {
-        rust: Rust<serde_json::Value>,
+        rust: Rust,
     },
 }
 

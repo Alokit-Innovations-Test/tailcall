@@ -316,15 +316,25 @@ pub struct Field {
 
     // TODO: make Value generic
     #[serde(default, skip_serializing_if = "is_default")]
-    pub extension: Option<Extension<Value>>,
+    pub extension: Option<Extension>,
 }
 
 #[derive(
-    Serialize, Deserialize, Clone, Debug, Default, Setters, PartialEq, Eq, schemars::JsonSchema,
+    DirectiveDefinition,
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Default,
+    Setters,
+    PartialEq,
+    Eq,
+    schemars::JsonSchema,
 )]
-pub struct Extension<Value> {
+pub struct Extension {
     name: String,
-    params: Vec<Value>
+    // TODO: make the value generic
+    params: Vec<serde_json::Value>,
 }
 
 // It's a terminal implementation of MergeRight
@@ -1054,6 +1064,7 @@ impl Config {
             .add_directive(Tag::directive_definition(generated_types))
             .add_directive(Telemetry::directive_definition(generated_types))
             .add_directive(Upstream::directive_definition(generated_types))
+            .add_directive(Extension::directive_definition(generated_types))
             .add_input(GraphQL::input_definition())
             .add_input(Grpc::input_definition())
             .add_input(Http::input_definition())

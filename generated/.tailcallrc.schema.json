@@ -369,6 +369,22 @@
       },
       "additionalProperties": false
     },
+    "Extension": {
+      "type": "object",
+      "required": [
+        "name",
+        "params"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": true
+        }
+      }
+    },
     "Field": {
       "description": "A field definition containing all the metadata information about resolving a field.",
       "type": "object",
@@ -417,6 +433,16 @@
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Extension"
             },
             {
               "type": "null"
