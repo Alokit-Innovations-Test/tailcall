@@ -107,5 +107,6 @@ where
                 Ok(ConstValue::Null)
             }
         }
+        IO::Rust { .. } => todo!("Rust IO not implemented"),
     }
 }

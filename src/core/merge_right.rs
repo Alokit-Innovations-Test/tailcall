@@ -80,6 +80,12 @@ where
     }
 }
 
+impl MergeRight for Arc<libloading::Library> {
+    fn merge_right(self, other: Self) -> Self {
+        other
+    }
+}
+
 impl MergeRight for Value {
     fn merge_right(self, other: Self) -> Self {
         match (self, other) {

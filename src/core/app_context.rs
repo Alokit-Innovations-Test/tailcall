@@ -111,6 +111,7 @@ impl AppContext {
                                 IO::Js { name: method } => {
                                     Some(IR::IO(IO::Js { name: method.clone() }))
                                 }
+                                IO::Rust { .. } => todo!("Rust IO not implemented"),
                             },
                             _ => None,
                         })

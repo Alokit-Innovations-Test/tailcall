@@ -507,6 +507,9 @@ pub fn to_field_definition(
     }
 
     update_args()
+        .and(
+            update_extension().trace(config::Extension::<serde_json::Value>::trace_name().as_str()),
+        )
         .and(update_http().trace(config::Http::trace_name().as_str()))
         .and(update_grpc(operation_type).trace(config::Grpc::trace_name().as_str()))
         .and(update_const_field().trace(config::Expr::trace_name().as_str()))

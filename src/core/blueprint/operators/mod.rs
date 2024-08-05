@@ -1,17 +1,18 @@
 mod call;
 mod enum_alias;
 mod expr;
+mod extension;
 mod graphql;
 mod grpc;
 mod http;
 mod js;
 mod modify;
 mod protected;
-mod extension;
 
 pub use call::*;
 pub use enum_alias::*;
 pub use expr::*;
+pub use extension::*;
 pub use graphql::*;
 pub use grpc::*;
 pub use http::*;

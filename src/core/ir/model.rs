@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::future::Future;
 use std::num::NonZeroU64;
-use std::os::raw::c_void;
-use std::pin::Pin;
 use std::sync::Arc;
+
 use async_graphql::Value;
-use libloading::Symbol;
 use strum_macros::Display;
-use tokio::sync::Mutex;
+
 use super::discriminator::Discriminator;
 use super::{EvalContext, ResolverContextLike};
 use crate::core::blueprint::DynamicValue;
 use crate::core::config::group_by::GroupBy;
+use crate::core::config::Extension;
 use crate::core::graphql::{self};
 use crate::core::http::HttpFilter;
 use crate::core::{grpc, http};
@@ -40,24 +38,28 @@ pub struct Map {
 }
 
 #[derive(Clone)]
-pub struct Rust {
+pub struct Rust<Value> {
     pub lib: Arc<libloading::Library>,
+    pub extension: Extension<Value>,
 }
-impl Debug for Rust {
+impl<Value> Debug for Rust<Value> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Rust")
-            .field("struct_", "...")
-            .field("lib", "...")
+            .field("struct_", &"...".to_string())
+            .field("lib", &"...".to_string())
             .finish()
     }
 }
-impl Rust {
+impl<Value> Rust<Value> {
     // TODO: impl init, prep and process
     // maybe we can statically init struct in the dependency provided by TC
 
-    // let prepare: Symbol<unsafe extern "C" fn(*mut c_void, IR, &[Value]) -> IR> = lib.get(b"prepare\0").map_err(to_anyhow)?;
-    // let process: Symbol<unsafe extern "C" fn(*mut c_void, &[Value], Value) -> Value> = lib.get(b"process\0").map_err(to_anyhow)?;
-    // let init: Symbol<unsafe extern "C" fn(*mut c_void) -> Pin<Box<dyn Future<Output=()> + Send>>> = lib.get(b"init\0").map_err(to_anyhow)?;
+    // let prepare: Symbol<unsafe extern "C" fn(*mut c_void, IR, &[Value]) -> IR> =
+    // lib.get(b"prepare\0").map_err(to_anyhow)?; let process: Symbol<unsafe
+    // extern "C" fn(*mut c_void, &[Value], Value) -> Value> =
+    // lib.get(b"process\0").map_err(to_anyhow)?; let init: Symbol<unsafe extern
+    // "C" fn(*mut c_void) -> Pin<Box<dyn Future<Output=()> + Send>>> =
+    // lib.get(b"init\0").map_err(to_anyhow)?;
 }
 #[derive(Clone, Debug, strum_macros::Display)]
 pub enum IO {
@@ -82,8 +84,8 @@ pub enum IO {
         name: String,
     },
     Rust {
-        rust: Rust,
-    }
+        rust: Rust<serde_json::Value>,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -189,6 +191,7 @@ impl<'a, Ctx: ResolverContextLike + Sync> CacheKey<EvalContext<'a, Ctx>> for IO 
             IO::Grpc { req_template, .. } => req_template.cache_key(ctx),
             IO::GraphQL { req_template, .. } => req_template.cache_key(ctx),
             IO::Js { .. } => None,
+            IO::Rust { .. } => None,
         }
     }
 }
