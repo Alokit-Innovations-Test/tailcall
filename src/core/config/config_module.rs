@@ -131,6 +131,9 @@ pub struct Extensions {
     pub htpasswd: Vec<Content<String>>,
 
     pub jwks: Vec<Content<JwkSet>>,
+
+    /// Contains the contents of the dylib file
+    pub rust_lib: Option<Arc<libloading::Library>>,
 }
 
 impl Extensions {

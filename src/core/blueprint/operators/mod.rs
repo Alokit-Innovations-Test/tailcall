@@ -7,6 +7,7 @@ mod http;
 mod js;
 mod modify;
 mod protected;
+mod extension;
 
 pub use call::*;
 pub use enum_alias::*;

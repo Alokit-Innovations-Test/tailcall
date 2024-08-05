@@ -313,6 +313,18 @@ pub struct Field {
     /// Stores the default value for the field
     #[serde(default, skip_serializing_if = "is_default")]
     pub default_value: Option<Value>,
+
+    // TODO: make Value generic
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub extension: Option<Extension<Value>>,
+}
+
+#[derive(
+    Serialize, Deserialize, Clone, Debug, Default, Setters, PartialEq, Eq, schemars::JsonSchema,
+)]
+pub struct Extension<Value> {
+    name: String,
+    params: Vec<Value>
 }
 
 // It's a terminal implementation of MergeRight

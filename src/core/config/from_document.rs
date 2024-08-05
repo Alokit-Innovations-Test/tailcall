@@ -13,7 +13,7 @@ use super::telemetry::Telemetry;
 use super::{Alias, Tag, JS};
 use crate::core::config::{
     self, Cache, Call, Config, Enum, GraphQL, Grpc, Link, Modify, Omit, Protected, RootSchema,
-    Server, Union, Upstream, Variant,
+    Server, Union, Upstream, Variant, Extension,
 };
 use crate::core::directive::DirectiveCodec;
 use crate::core::valid::{Valid, ValidationError, Validator};
@@ -333,8 +333,9 @@ where
         .fuse(Call::from_directives(directives.iter()))
         .fuse(Protected::from_directives(directives.iter()))
         .fuse(default_value)
+        .fuse(Extension::from_directives(directives.iter()))
         .map(
-            |(http, graphql, cache, grpc, omit, modify, script, call, protected, default_value)| {
+            |(http, graphql, cache, grpc, omit, modify, script, call, protected, default_value, extension)| {
                 let const_field = to_const_field(directives);
                 config::Field {
                     type_of,
@@ -354,6 +355,7 @@ where
                     call,
                     protected,
                     default_value,
+                    extension,
                 }
             },
         )

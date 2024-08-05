@@ -1,10 +1,14 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
+use std::future::Future;
 use std::num::NonZeroU64;
-
+use std::os::raw::c_void;
+use std::pin::Pin;
+use std::sync::Arc;
 use async_graphql::Value;
+use libloading::Symbol;
 use strum_macros::Display;
-
+use tokio::sync::Mutex;
 use super::discriminator::Discriminator;
 use super::{EvalContext, ResolverContextLike};
 use crate::core::blueprint::DynamicValue;
@@ -35,6 +39,26 @@ pub struct Map {
     pub map: HashMap<String, String>,
 }
 
+#[derive(Clone)]
+pub struct Rust {
+    pub lib: Arc<libloading::Library>,
+}
+impl Debug for Rust {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Rust")
+            .field("struct_", "...")
+            .field("lib", "...")
+            .finish()
+    }
+}
+impl Rust {
+    // TODO: impl init, prep and process
+    // maybe we can statically init struct in the dependency provided by TC
+
+    // let prepare: Symbol<unsafe extern "C" fn(*mut c_void, IR, &[Value]) -> IR> = lib.get(b"prepare\0").map_err(to_anyhow)?;
+    // let process: Symbol<unsafe extern "C" fn(*mut c_void, &[Value], Value) -> Value> = lib.get(b"process\0").map_err(to_anyhow)?;
+    // let init: Symbol<unsafe extern "C" fn(*mut c_void) -> Pin<Box<dyn Future<Output=()> + Send>>> = lib.get(b"init\0").map_err(to_anyhow)?;
+}
 #[derive(Clone, Debug, strum_macros::Display)]
 pub enum IO {
     Http {
@@ -57,6 +81,9 @@ pub enum IO {
     Js {
         name: String,
     },
+    Rust {
+        rust: Rust,
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
