@@ -5,7 +5,7 @@ use hyper::header::{HeaderName, HeaderValue};
 use hyper::HeaderMap;
 use inquire::Confirm;
 use pathdiff::diff_paths;
-
+use crate::cli::llm::infer_arg_name::InferArgsName;
 use super::config::{Config, Resolved, Source};
 use super::source::ConfigSource;
 use crate::cli::llm::InferTypeName;
@@ -165,8 +165,10 @@ impl Generator {
         let mut config = config_gen.generate(true)?;
 
         if infer_type_names {
-            let mut llm_gen = InferTypeName::default();
-            let suggested_names = llm_gen.generate(config.config()).await?;
+            let mut generated_types = InferTypeName::default();
+            let mut generated_args = InferArgsName::default();
+            let suggested_names = generated_types.generate(config.config()).await?;
+            let suggested_args = generated_args.generate(config.config()).await?;
             let cfg = RenameTypes::new(suggested_names.iter())
                 .transform(config.config().to_owned())
                 .to_result()?;

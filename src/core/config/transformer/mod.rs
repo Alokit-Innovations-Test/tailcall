@@ -9,6 +9,7 @@ mod rename_types;
 mod required;
 mod tree_shake;
 mod union_input_type;
+mod rename_arg;
 
 pub use ambiguous_type::{AmbiguousType, Resolution};
 pub use consolidate_url::ConsolidateURL;
