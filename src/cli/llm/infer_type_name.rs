@@ -134,7 +134,15 @@ impl InferTypeName {
                                 delay
                             );
                             tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
-                            delay = std::cmp::min(delay * 2, 60);
+                            if delay > 60 {
+                                tracing::warn!(
+                                    "Unable to retrieve a name for the type '{}'. Skipping",
+                                    type_name
+                                );
+                                break;
+                            } else {
+                                delay <<= 1;
+                            }
                         }
                     }
                 }
