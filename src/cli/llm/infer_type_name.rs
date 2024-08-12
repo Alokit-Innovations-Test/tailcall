@@ -134,7 +134,7 @@ impl InferTypeName {
                                 delay
                             );
                             tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
-                            delay *= std::cmp::min(delay * 2, 60);
+                            delay = std::cmp::min(delay * 2, 60);
                         }
                     }
                 }
