@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         Err(error) => {
             // Ensure all errors are converted to Errata before being printed.
             let cli_error: Errata = error.into();
-            tracing::error!("{}", cli_error.color(true));
+            tracing::error!("Dummy value: {}", cli_error.color(true));
             std::process::exit(exitcode::CONFIG);
         }
     }
