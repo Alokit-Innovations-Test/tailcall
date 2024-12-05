@@ -12,6 +12,7 @@ thread_local! {
 }
 
 fn run_blocking() -> anyhow::Result<()> {
+    // noop
 }
 
 fn main() -> anyhow::Result<()> {
