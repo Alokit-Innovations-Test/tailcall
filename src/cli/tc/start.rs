@@ -1,3 +1,4 @@
+
 use anyhow::Result;
 use tailcall_enterprise::Enterprise;
 use tracing::info;
